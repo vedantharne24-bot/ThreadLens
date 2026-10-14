@@ -1,0 +1,9 @@
+# ThreadLens backend (Python >= 3.11, tested with 3.14 on Ubuntu 26.04)
+fastapi>=0.115,<1.0          # HTTP + WebSocket API
+uvicorn[standard]>=0.30,<1.0  # ASGI server (uvloop/httptools/websockets)
+pydantic>=2.11,<3.0          # schema validation for API and event models
+
+# development / tests
+pytest>=8.0,<10.0
+httpx>=0.27,<1.0             # FastAPI TestClient transport
+cmake>=3.27                  # build tool for the collector when the distro has none
