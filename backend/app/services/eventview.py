@@ -10,13 +10,19 @@ from __future__ import annotations
 import errno
 
 from app.diagnostics.findings import fmt_ms
-from app.models.wire import EventType, Flag, flag_names, mutex_kind_name
+from app.models.wire import EventType, Flag, flag_names, mutex_kind_name, rw_kind, rw_mode, rwlock_kind_name
 
 TYPE_NAMES = {int(t): t.name for t in EventType}
 TYPE_BY_NAME = {t.name: int(t) for t in EventType}
 
 LOCK_TYPES = {EventType.LOCK_REQUEST, EventType.LOCK_ACQUIRED, EventType.LOCK_FAILED, EventType.LOCK_RELEASE,
-              EventType.UNLOCK_FAILED, EventType.MUTEX_INIT, EventType.MUTEX_DESTROY, EventType.LOCK_NAME}
+              EventType.UNLOCK_FAILED, EventType.MUTEX_INIT, EventType.MUTEX_DESTROY, EventType.LOCK_NAME,
+              EventType.RW_REQUEST, EventType.RW_ACQUIRED, EventType.RW_FAILED, EventType.RW_RELEASE,
+              EventType.RWLOCK_INIT, EventType.RWLOCK_DESTROY}
+RW_TYPES = {EventType.RW_REQUEST, EventType.RW_ACQUIRED, EventType.RW_FAILED, EventType.RW_RELEASE}
+SEM_TYPES = {EventType.SEM_INIT, EventType.SEM_DESTROY, EventType.SEM_WAIT_BEGIN, EventType.SEM_WAIT_END,
+             EventType.SEM_POST, EventType.SEM_POST_FAILED}
+RW_WORDS = {"r": "reading", "w": "writing"}
 THREAD_TARGET_TYPES = {EventType.JOIN_BEGIN, EventType.JOIN_END, EventType.THREAD_CREATE,
                        EventType.THREAD_DETACH, EventType.CANCEL_REQUEST}
 
@@ -40,6 +46,7 @@ class EventFormatter:
             if t.get("handle"):
                 self.threads_by_handle[t["handle"]] = t
         self.locks = {l["id"]: l for l in snapshot.get("locks", [])}
+        self.sems = {int(s["addr"], 16): s for s in snapshot.get("semaphores", [])}
 
     def _thread(self, tid: int) -> dict | None:
         return self.threads_by_tid.get(tid)
@@ -62,6 +69,23 @@ class EventFormatter:
             meta["mutex_kind"] = mutex_kind_name(row["extra"])
         elif typ in (EventType.COND_WAIT_BEGIN, EventType.COND_WAIT_END):
             meta["cond"] = f"{row['obj']:#x}"
+        elif typ in RW_TYPES:
+            meta["rw_mode"] = rw_mode(row["extra"])
+            meta["rwlock_kind"] = rwlock_kind_name(rw_kind(row["extra"]))
+            if typ == EventType.RW_REQUEST:
+                meta["glibc_writer_tid"] = row["aux"] or None
+            elif typ in (EventType.RW_ACQUIRED, EventType.RW_FAILED):
+                meta["wait_ns"] = row["aux"]
+        elif typ in SEM_TYPES:
+            sem = self.sems.get(row["obj"])
+            meta["semaphore"] = sem["label"] if sem else f"{row['obj']:#x}"
+            if typ in (EventType.SEM_WAIT_BEGIN, EventType.SEM_POST):
+                meta["count_seen"] = row["aux"]
+            elif typ == EventType.SEM_WAIT_END:
+                meta["wait_ns"] = row["aux"]
+            elif typ == EventType.SEM_INIT:
+                meta["initial_value"] = row["aux"]
+                meta["pshared"] = bool(row["extra"])
         elif typ == EventType.THREAD_START:
             meta["thread_index"] = row["extra"]
         elif typ == EventType.THREAD_EXIT:
@@ -146,6 +170,41 @@ class EventFormatter:
             return f"{who} waits at barrier {row['obj']:#x}"
         if typ == EventType.BARRIER_WAIT_END:
             return f"{who} passed barrier {row['obj']:#x}"
+        if typ in (EventType.RW_REQUEST, EventType.RW_ACQUIRED, EventType.RW_FAILED):
+            how = RW_WORDS[rw_mode(row["extra"])]
+            if typ == EventType.RW_REQUEST:
+                return f"{who} requests {lname} for {how}{timed}"
+            if typ == EventType.RW_ACQUIRED:
+                if flags & Flag.TRY:
+                    return f"{who} acquired {lname} for {how} with a try-lock"
+                return f"{who} acquired {lname} for {how} after {fmt_ms(row['aux'])}"
+            kind = "try-lock" if flags & Flag.TRY else "lock"
+            return f"{who}: {kind} on {lname} for {how} failed ({errno_name(row['result'])})"
+        if typ == EventType.RW_RELEASE:
+            return f"{who} releases {lname}"
+        if typ == EventType.RWLOCK_INIT:
+            return f"{who} initialised {lname} ({rwlock_kind_name(row['extra'])})"
+        if typ == EventType.RWLOCK_DESTROY:
+            return f"{who} destroyed {lname} ({errno_name(row['result'])})"
+        if typ in SEM_TYPES:
+            sem = self.sems.get(row["obj"])
+            sname = sem["label"] if sem else f"sem@{row['obj']:#x}"
+            if typ == EventType.SEM_INIT:
+                return f"{who} initialised semaphore {sname} with value {row['aux']}"
+            if typ == EventType.SEM_DESTROY:
+                return f"{who} destroyed semaphore {sname} ({errno_name(row['result'])})"
+            if typ == EventType.SEM_WAIT_BEGIN:
+                return f"{who} waits on semaphore {sname}{timed} (count was {row['aux']})"
+            if typ == EventType.SEM_WAIT_END:
+                if flags & Flag.TRY:
+                    return f"{who}: sem_trywait on {sname} " + (
+                        "succeeded" if not row["result"] else f"failed ({errno_name(row['result'])})")
+                if not row["result"]:
+                    return f"{who} passed semaphore {sname} after {fmt_ms(row['aux'])}"
+                return f"{who}: wait on semaphore {sname} ended with {errno_name(row['result'])}"
+            if typ == EventType.SEM_POST:
+                return f"{who} posts semaphore {sname}"
+            return f"{who}: sem_post on {sname} failed ({errno_name(row['result'])})"
         if typ == EventType.PROCESS_START:
             return f"process started (parent pid {row['obj']})"
         if typ == EventType.PROCESS_EXIT:

@@ -49,6 +49,18 @@ class EventType(IntEnum):
     BARRIER_WAIT_BEGIN = 40
     BARRIER_WAIT_END = 41
     USER_MARK = 50
+    RWLOCK_INIT = 60
+    RWLOCK_DESTROY = 61
+    RW_REQUEST = 62
+    RW_ACQUIRED = 63
+    RW_FAILED = 64
+    RW_RELEASE = 65
+    SEM_INIT = 70
+    SEM_DESTROY = 71
+    SEM_WAIT_BEGIN = 72
+    SEM_WAIT_END = 73
+    SEM_POST = 74
+    SEM_POST_FAILED = 75
 
 
 KNOWN_TYPES = frozenset(int(t) for t in EventType)
@@ -85,6 +97,31 @@ MUTEX_KIND_NAMES = {0: "normal", 1: "recursive", 2: "errorcheck", 3: "adaptive"}
 def mutex_kind_name(kind: int) -> str:
     base = MUTEX_KIND_NAMES.get(kind & MUTEX_KIND_MASK, "normal")
     return base + ("+robust" if kind & MUTEX_ROBUST_BIT else "")
+
+
+# rwlock records: extra = mode (bits 0..7) | glibc rwlock kind << 8 (TL_RW_EXTRA)
+RW_READ, RW_WRITE = 0, 1
+RW_MODE_MASK = 0xFF
+RW_KIND_SHIFT = 8
+# glibc pthread_rwlock_t.__data.__flags. glibc implements PREFER_WRITER_NP exactly
+# like PREFER_READER_NP; only PREFER_WRITER_NONRECURSIVE_NP makes new readers
+# queue behind waiting writers.
+RW_PREFER_READER, RW_PREFER_WRITER, RW_PREFER_WRITER_NONRECURSIVE = 0, 1, 2
+RW_KIND_NAMES = {RW_PREFER_READER: "rwlock", RW_PREFER_WRITER: "rwlock (prefer-writer, acts as prefer-reader)",
+                 RW_PREFER_WRITER_NONRECURSIVE: "rwlock (writer-preferring)"}
+
+
+def rw_mode(extra: int) -> str:
+    """'r' or 'w' from an rwlock record's extra field."""
+    return "w" if (extra & RW_MODE_MASK) == RW_WRITE else "r"
+
+
+def rw_kind(extra: int) -> int:
+    return (extra >> RW_KIND_SHIFT) & 0xFF
+
+
+def rwlock_kind_name(kind: int) -> str:
+    return RW_KIND_NAMES.get(kind, f"rwlock (kind {kind})")
 
 
 @dataclass(slots=True)

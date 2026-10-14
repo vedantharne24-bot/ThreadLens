@@ -44,10 +44,16 @@ def health(s: Settings = Depends(deps.settings), cat: Catalog = Depends(deps.cat
         "scenarios_total": len(scen), "scenarios_built": sum(1 for x in scen if x["built"]),
         "running_sessions": len(mgr.running()), "max_sessions": s.max_concurrent_sessions,
         "supported_primitives": ["pthread_mutex (normal, recursive, errorcheck, adaptive, robust)",
-                                 "pthread_mutex_trylock / timedlock / clocklock", "pthread_cond (wait, timedwait, "
-                                 "clockwait, signal, broadcast)", "pthread_create / join / detach / exit / cancel",
+                                 "pthread_mutex_trylock / timedlock / clocklock",
+                                 "pthread_rwlock (rdlock, wrlock, try / timed / clock variants, unlock, init, "
+                                 "destroy; shared readers in the wait-for graph)",
+                                 "pthread_cond (wait, timedwait, clockwait, signal, broadcast)",
+                                 "sem_t (sem_wait, trywait, timedwait, clockwait, post, init, destroy; no owner, "
+                                 "stall detection only)",
+                                 "pthread_create / join / detach / exit / cancel",
                                  "pthread_barrier_wait (state only)", "pthread_setname_np"],
-        "unsupported_primitives": ["pthread_rwlock", "pthread_spin", "sem_t (POSIX semaphores)",
+        "unsupported_primitives": ["pthread_spin", "sem_open / sem_close (named semaphores are tracked from "
+                                   "their first wait/post; initial count unknown)",
                                    "futex / atomics-based custom locks", "statically linked programs"],
     }
 

@@ -1,8 +1,9 @@
 """Per-thread activity lanes for the Live Threads timeline.
 
 One pass over the stored events produces state segments per thread:
-running, holding (running inside a critical section), blocked_lock,
-waiting_cond, blocked_join and barrier. When a lane has more segments than
+running, holding (running inside a critical section, mutex or rwlock),
+blocked_lock (mutex or rwlock), waiting_cond, waiting_sem, blocked_join and
+barrier. When a lane has more segments than
 the requested resolution, adjacent short segments are merged and the merged
 segment keeps the most "severe" state, so short but important waits stay
 visible after downsampling.
@@ -13,7 +14,8 @@ from __future__ import annotations
 from app.models.wire import EventType as E, Flag
 from app.storage.db import Database
 
-SEVERITY = {"running": 0, "holding": 1, "barrier": 2, "waiting_cond": 3, "blocked_join": 4, "blocked_lock": 5}
+SEVERITY = {"running": 0, "holding": 1, "barrier": 2, "waiting_cond": 3, "waiting_sem": 3, "blocked_join": 4,
+            "blocked_lock": 5}
 
 
 def build_timeline(db: Database, sid: str, snap: dict, max_segments: int) -> dict:
@@ -50,17 +52,22 @@ def build_timeline(db: Database, sid: str, snap: dict, max_segments: int) -> dic
         elif typ == E.THREAD_EXIT:
             close(lane, ts)
             lane["state"] = None
-        elif typ == E.LOCK_REQUEST:
+        elif typ in (E.LOCK_REQUEST, E.RW_REQUEST):
             set_state(lane, ts, "blocked_lock", lock)
-        elif typ == E.LOCK_ACQUIRED:
+        elif typ in (E.LOCK_ACQUIRED, E.RW_ACQUIRED):
             lane["held"] += 1
             set_state(lane, ts, running(lane))
-        elif typ == E.LOCK_FAILED:
+        elif typ in (E.LOCK_FAILED, E.RW_FAILED):
             if not r["flags"] & Flag.TRY:
                 set_state(lane, ts, running(lane))
-        elif typ == E.LOCK_RELEASE:
+        elif typ in (E.LOCK_RELEASE, E.RW_RELEASE):
             lane["held"] = max(0, lane["held"] - 1)
             set_state(lane, ts, running(lane))
+        elif typ == E.SEM_WAIT_BEGIN:
+            set_state(lane, ts, "waiting_sem")
+        elif typ == E.SEM_WAIT_END:
+            if not r["flags"] & Flag.TRY:
+                set_state(lane, ts, running(lane))
         elif typ == E.UNLOCK_FAILED:
             lane["held"] += 1
         elif typ == E.COND_WAIT_BEGIN:

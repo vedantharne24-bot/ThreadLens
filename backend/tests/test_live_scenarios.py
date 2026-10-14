@@ -44,6 +44,7 @@ def run_scenario(client, scenario_id: str, **extra) -> dict:
     "bank-deadlock", "bank-ordered", "bank-deadlock-cpp", "bank-scoped-cpp", "healthy", "contention",
     "producer-consumer", "lock-order-both", "lifecycle", "misuse", "self-deadlock", "philosophers",
     "philosophers-fixed", "join-deadlock", "lost-wakeup",
+    "rwlock-deadlock", "rwlock-ordered", "rwlock-upgrade", "sem-stall", "sem-ordered",
 ])
 def test_scenario_verdict_matches_ground_truth(client, scenario_id):
     expect = CATALOG[scenario_id]["expect"]

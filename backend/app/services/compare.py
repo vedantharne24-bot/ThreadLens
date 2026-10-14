@@ -132,15 +132,20 @@ def merge_lock_order(rows: list[dict]) -> dict:
             key = l.get("stable_key") or f"{row['id']}:L{l['id']}"
             keymap[l["id"]] = key
             nodes.setdefault(key, {"key": key, "label": l.get("label"), "stable": bool(l.get("stable_key")),
-                                   "sessions": []})
+                                   "primitive": l.get("primitive", "mutex"), "sessions": []})
+            if "writer-preferring" in (l.get("kind") or ""):
+                nodes[key]["writer_preferring"] = True
             if row["id"] not in nodes[key]["sessions"]:
                 nodes[key]["sessions"].append(row["id"])
         for e in snap.get("lock_order", {}).get("edges", []):
             s, d = keymap.get(e["from"]), keymap.get(e["to"])
             if s is None or d is None:
                 continue
-            m = edges.setdefault((s, d), {"from": s, "to": d, "count": 0, "sessions": []})
+            m = edges.setdefault((s, d), {"from": s, "to": d, "count": 0, "sessions": [], "src_modes": [],
+                                          "dst_modes": []})
             m["count"] += e.get("count", 1)
+            for k in ("src_modes", "dst_modes"):
+                m[k] = sorted(set(m[k]) | set(e.get(k) or ["x"]))
             if row["id"] not in m["sessions"]:
                 m["sessions"].append(row["id"])
     adj: dict[str, set[str]] = defaultdict(set)
@@ -179,9 +184,18 @@ def merge_lock_order(rows: list[dict]) -> dict:
         cyc_edges = [edges[(cyc[i], cyc[(i + 1) % len(cyc)])] for i in range(len(cyc))]
         sessions = sorted({s for e in cyc_edges for s in e["sessions"]})
         single = [s for s in sessions if all(s in e["sessions"] for e in cyc_edges)]
+        filter_reason = None
+        for i, e in enumerate(cyc_edges):
+            # same shared-mode filter as the live analysis (Analyzer._shared_mode_link)
+            nxt, node = cyc_edges[(i + 1) % len(cyc_edges)], nodes.get(e["to"], {})
+            if node.get("primitive") == "rwlock" and not node.get("writer_preferring") \
+                    and e["dst_modes"] == ["r"] and nxt["src_modes"] == ["r"]:
+                filter_reason = (f"shared-mode cycle: {node.get('label') or e['to']} is only ever held and requested "
+                                 "for reading along this cycle; read locks do not exclude each other")
+                break
         cycles.append({
             "nodes": cyc, "edges": cyc_edges, "sessions": sessions, "component": sorted(comp),
-            "cross_session": not single,
+            "cross_session": not single, "filter_reason": filter_reason,
             "classification": "potential_deadlock",
             "explanation": (
                 "The orders in this cycle were observed in different executions; no single run contained "

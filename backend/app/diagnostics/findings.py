@@ -17,7 +17,9 @@ Classification vocabulary (deliberately conservative):
                         locks, ...).
   stall                 every live thread is blocked and no progress is seen,
                         but there is no lock cycle (e.g. lost condition-variable
-                        wake-up). Cause is inconclusive by design.
+                        wake-up, or a semaphore nobody will post — semaphores
+                        have no owner, so they never form wait-for edges).
+                        Cause is inconclusive by design.
   inconclusive          the evidence would indicate a problem but event
                         coverage is incomplete (lost events, gaps, anomalies).
 """
@@ -52,9 +54,9 @@ VERDICT_ORDER = [CONFIRMED_DEADLOCK, STALL, INCONCLUSIVE, POTENTIAL_DEADLOCK, AP
 SEVERITY_RANK = {"critical": 3, "warning": 2, "info": 1}
 
 COMMON_LIMITATIONS = [
-    "ThreadLens observes only intercepted pthread operations (mutexes, condition variables, "
-    "thread create/join/exit, barriers). Synchronization built from atomics, futexes, "
-    "semaphores, read-write locks or spinlocks is invisible to it.",
+    "ThreadLens observes only intercepted pthread operations (mutexes, read-write locks, condition "
+    "variables, POSIX semaphores, thread create/join/exit, barriers). Synchronization built from "
+    "atomics, futexes or spinlocks is invisible to it.",
     "Locks used internally by glibc (stdio, malloc) are not intercepted.",
 ]
 
@@ -136,7 +138,17 @@ def fmt_ms(ns: int | float) -> str:
 # Remedy catalogues (suggestions to verify by testing — not guaranteed fixes)
 # --------------------------------------------------------------------------
 
-def deadlock_remedies(lock_labels: list[str], has_join: bool, self_loop: bool) -> list[str]:
+def deadlock_remedies(lock_labels: list[str], has_join: bool, self_loop: bool, *, has_rwlock: bool = False,
+                      rw_upgrade: bool = False) -> list[str]:
+    if rw_upgrade:
+        return [
+            "Do not upgrade a read lock in place. Release the read lock, acquire the write lock, then "
+            "re-check the condition that made the write necessary (another writer may have run in between).",
+            "If the write is likely, take the write lock from the start (or use a separate mutex that "
+            "serializes the would-be upgraders).",
+            "pthread_rwlock_t has no upgrade operation; C++ std::shared_mutex does not either. Libraries "
+            "that offer one (e.g. boost::upgrade_mutex) allow only ONE upgradable holder at a time.",
+        ]
     if self_loop:
         return [
             "Do not lock a mutex the thread already holds. Restructure the code so the inner "
@@ -157,6 +169,10 @@ def deadlock_remedies(lock_labels: list[str], has_join: bool, self_loop: bool) -
             "std::lock in C++, or pthread_mutex_trylock with release-and-retry back-off in C.")
         out.append("Reduce nested locking: copy the data needed under the first lock, release it, "
                    "then take the second lock.")
+    if has_rwlock:
+        out.append("Read locks take part in the ordering too: a writer waits for EVERY reader, so a thread "
+                   "that holds a read lock while requesting another lock can block a writer forever. Apply "
+                   "the same global order to read and write acquisitions.")
     if has_join:
         out.append("Never call pthread_join() (or wait for another thread's progress) while holding "
                    "a lock that thread may need. Release the lock before joining.")
@@ -179,9 +195,16 @@ CONTENTION_REMEDIES = [
     "Shorten the critical section: move computation, I/O and allocation outside the lock.",
     "Split the lock (lock striping / per-bucket locks) so independent data does not share one mutex.",
     "Batch updates per thread and publish them under the lock less often.",
-    "If reads dominate, consider a reader-writer lock (pthread_rwlock_t) — note ThreadLens does "
-    "not yet track rwlocks.",
+    "If reads dominate, consider a reader-writer lock (pthread_rwlock_t) so readers can proceed in parallel.",
     "Use atomics for simple counters instead of a mutex.",
+]
+
+SEM_STALL_REMEDIES = [
+    "Never block in sem_wait while holding a mutex that the thread which would post the semaphore "
+    "needs (the bounded-buffer rule: wait on the slot/item semaphore BEFORE locking the buffer mutex).",
+    "Check that every sem_wait has a matching sem_post on all code paths, including error paths and "
+    "shutdown; count posts and waits per semaphore.",
+    "Use sem_timedwait with a diagnostic timeout during debugging to turn a silent hang into an error.",
 ]
 
 STALL_REMEDIES = [

@@ -64,7 +64,10 @@ def import_trace(client, trace: Trace) -> str:
 
 def test_health(client):
     h = client.get("/api/health").json()
-    assert h["status"] == "ok" and "pthread_rwlock" in h["unsupported_primitives"]
+    assert h["status"] == "ok" and "pthread_spin" in h["unsupported_primitives"]
+    supported = " ".join(h["supported_primitives"])
+    assert "pthread_rwlock" in supported and "sem_t" in supported
+    assert not any("rwlock" in p or p.startswith("sem_t") for p in h["unsupported_primitives"])
 
 
 def test_import_analyze_and_query(client):

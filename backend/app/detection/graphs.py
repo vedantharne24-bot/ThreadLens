@@ -10,9 +10,20 @@ Wait-for graph (WFG)
     this walk; ``all_cycles`` (used for snapshots) runs the same idea from every
     node with a shared visited set, which is O(V) overall.
 
+    Read-write locks break that property: a writer waits for EVERY current
+    reader, so its out-degree can exceed 1. All of those readers must release
+    (an AND-wait), so any cycle through any one of the edges is still a
+    deadlock, but it has to be found by depth-first search: ``find_cycle_dfs``
+    (one start node, O(V + E) of the reachable part) and ``cycles_multi``
+    (snapshots: Tarjan SCCs, then a shortest cycle through every edge inside a
+    component). The engine switches to them only while some thread is waiting
+    on an rwlock; mutex/join/condvar-only states keep the successor walk.
+
 Lock-order graph (LOG)
-    Nodes are locks; edge L1 -> L2 means "some thread acquired L2 (by a
-    blocking lock call) while holding L1". This is the GoodLock / lockdep idea:
+    Nodes are locks (mutexes and rwlocks); edge L1 -> L2 means "some thread
+    acquired L2 (by a blocking lock call) while holding L1". Each edge also
+    remembers the modes involved (how L1 was held: exclusively, for reading or
+    for writing; how L2 was requested). This is the GoodLock / lockdep idea:
     a cycle L1 -> L2 -> ... -> L1 means the program acquires the same locks in
     conflicting orders and *may* deadlock under a different interleaving.
     When an edge is observed for the first time we look for a path back
@@ -65,6 +76,81 @@ def all_cycles(nodes: Iterable[Hashable], successor: Callable[[Hashable], Hashab
     return cycles
 
 
+_END = object()
+
+
+def find_cycle_dfs(start: Hashable, successors: Callable[[Hashable], Iterable[Hashable]]) -> list | None:
+    """Depth-first search from ``start`` for a cycle in a graph whose nodes may
+    have several successors. Returns the first cycle found (each node once, in
+    edge order) or None. Successors are explored in the order given, so a
+    self-loop listed first is reported before longer cycles."""
+    on_path: dict = {start: 0}
+    path: list = [start]
+    stack = [iter(successors(start))]
+    done: set = set()
+    while stack:
+        nxt = next(stack[-1], _END)
+        if nxt is _END:
+            stack.pop()
+            del on_path[path.pop()]
+            continue
+        if nxt in on_path:
+            return path[on_path[nxt]:]
+        if nxt in done:
+            continue
+        done.add(nxt)
+        on_path[nxt] = len(path)
+        path.append(nxt)
+        stack.append(iter(successors(nxt)))
+    return None
+
+
+def cycles_multi(nodes: Iterable[Hashable], successors: Callable[[Hashable], Iterable[Hashable]],
+                 limit: int = 50) -> list[list]:
+    """Distinct shortest cycles through every edge that lies on a cycle, for
+    graphs whose nodes can have several successors (bounded by ``limit``)."""
+    succ = {n: list(successors(n)) for n in nodes}
+    out: list[list] = []
+    seen: set[tuple] = set()
+    for comp in tarjan_scc(list(succ), lambda n: succ.get(n, ())):
+        members = set(comp)
+        inside = lambda n: (m for m in succ.get(n, ()) if m in members)  # noqa: E731
+        for u in sorted(comp):
+            for v in succ.get(u, ()):
+                if v not in members:
+                    continue
+                back = [u] if u == v else _bfs_path(v, u, inside)
+                if back is None:
+                    continue
+                cyc = [u] if u == v else [u] + back[:-1]
+                key = canonical_cycle(cyc)
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append(list(key))
+                if len(out) >= limit:
+                    return out
+    return out
+
+
+def _bfs_path(start: Hashable, goal: Hashable, successors: Callable[[Hashable], Iterable[Hashable]]) -> list | None:
+    """Shortest path start ~> goal (BFS), as a list of nodes."""
+    prev: dict = {start: start}
+    queue = deque([start])
+    while queue:
+        node = queue.popleft()
+        if node == goal:
+            out = [goal]
+            while out[-1] != start:
+                out.append(prev[out[-1]])
+            return out[::-1]
+        for nxt in successors(node):
+            if nxt not in prev:
+                prev[nxt] = node
+                queue.append(nxt)
+    return None
+
+
 def canonical_cycle(cycle: list) -> tuple:
     """Rotate a cycle so that it starts at its smallest element (for dedup)."""
     if not cycle:
@@ -89,6 +175,8 @@ class LockOrderEdge:
     guards: frozenset[int] | None = None  # locks held during EVERY observation
     timed_only: bool = True      # every observation used a timed acquisition
     via_cond: bool = False       # observed when re-acquiring a cond-var mutex
+    src_modes: set[str] = field(default_factory=set)  # how src was held: 'x' mutex, 'r' / 'w' rwlock
+    dst_modes: set[str] = field(default_factory=set)  # how dst was requested
 
     def as_dict(self) -> dict:
         return {
@@ -97,7 +185,8 @@ class LockOrderEdge:
             "first_seq_src": self.first_seq_src, "first_seq": self.first_seq_dst,
             "first_ts": self.first_ts, "last_seq": self.last_seq,
             "guards": sorted(self.guards or ()), "timed_only": self.timed_only,
-            "via_cond": self.via_cond,
+            "via_cond": self.via_cond, "src_modes": sorted(self.src_modes),
+            "dst_modes": sorted(self.dst_modes),
         }
 
 
@@ -108,7 +197,7 @@ class LockOrderGraph:
 
     def observe(self, src: int, dst: int, thread: int, seq_src: int, seq_dst: int, ts: int,
                 caller_src: int, caller_dst: int, guards: frozenset[int], timed: bool,
-                via_cond: bool = False) -> tuple[LockOrderEdge, bool]:
+                via_cond: bool = False, src_mode: str = "x", dst_mode: str = "x") -> tuple[LockOrderEdge, bool]:
         """Record one observation of "dst acquired while holding src".
 
         Returns (edge, is_new_edge).
@@ -126,6 +215,8 @@ class LockOrderGraph:
             edge.guards = edge.guards & guards if edge.guards is not None else guards
         edge.count += 1
         edge.threads.add(thread)
+        edge.src_modes.add(src_mode)
+        edge.dst_modes.add(dst_mode)
         edge.last_seq = seq_dst
         if not timed:
             edge.timed_only = False

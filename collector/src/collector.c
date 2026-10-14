@@ -20,7 +20,10 @@
  *        - LOCK_ACQUIRED is recorded after the real lock returns,
  *        - LOCK_RELEASE  is recorded BEFORE calling the real unlock.
  *     Therefore, for any mutex, a release always has a smaller sequence number
- *     than the next acquisition by another thread.
+ *     than the next acquisition by another thread. Read-write locks follow
+ *     the same rule (RW_REQUEST / RW_ACQUIRED / RW_RELEASE), and so do
+ *     semaphores: SEM_POST is recorded before the real sem_post, so a post
+ *     always precedes the SEM_WAIT_END of the waiter it lets through.
  *
  *  4. A private flusher thread drains the ring in sequence order and writes
  *     batches to a Unix-domain socket (or a trace file). Application threads
@@ -36,6 +39,7 @@
 #include <link.h>
 #include <pthread.h>
 #include <sched.h>
+#include <semaphore.h>
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -86,6 +90,24 @@ static struct {
     void (*exit_)(void *);
     int  (*setname)(pthread_t, const char *);
     int  (*barrier_wait)(pthread_barrier_t *);
+    int  (*rwlock_init)(pthread_rwlock_t *, const pthread_rwlockattr_t *);
+    int  (*rwlock_destroy)(pthread_rwlock_t *);
+    int  (*rwlock_rdlock)(pthread_rwlock_t *);
+    int  (*rwlock_wrlock)(pthread_rwlock_t *);
+    int  (*rwlock_tryrdlock)(pthread_rwlock_t *);
+    int  (*rwlock_trywrlock)(pthread_rwlock_t *);
+    int  (*rwlock_timedrdlock)(pthread_rwlock_t *, const struct timespec *);
+    int  (*rwlock_timedwrlock)(pthread_rwlock_t *, const struct timespec *);
+    int  (*rwlock_clockrdlock)(pthread_rwlock_t *, clockid_t, const struct timespec *);
+    int  (*rwlock_clockwrlock)(pthread_rwlock_t *, clockid_t, const struct timespec *);
+    int  (*rwlock_unlock)(pthread_rwlock_t *);
+    int  (*sem_init)(sem_t *, int, unsigned int);
+    int  (*sem_destroy)(sem_t *);
+    int  (*sem_wait)(sem_t *);
+    int  (*sem_trywait)(sem_t *);
+    int  (*sem_timedwait)(sem_t *, const struct timespec *);
+    int  (*sem_clockwait)(sem_t *, clockid_t, const struct timespec *);
+    int  (*sem_post)(sem_t *);
 } real;
 
 static void *tl_sym(const char *name, const char *version)
@@ -126,6 +148,24 @@ static void tl_resolve(void)
     real.exit_           = tl_sym("pthread_exit", NULL);
     real.setname         = tl_sym("pthread_setname_np", NULL);
     real.barrier_wait    = tl_sym("pthread_barrier_wait", NULL);
+    real.rwlock_init        = tl_sym("pthread_rwlock_init", NULL);
+    real.rwlock_destroy     = tl_sym("pthread_rwlock_destroy", NULL);
+    real.rwlock_rdlock      = tl_sym("pthread_rwlock_rdlock", NULL);
+    real.rwlock_wrlock      = tl_sym("pthread_rwlock_wrlock", NULL);
+    real.rwlock_tryrdlock   = tl_sym("pthread_rwlock_tryrdlock", NULL);
+    real.rwlock_trywrlock   = tl_sym("pthread_rwlock_trywrlock", NULL);
+    real.rwlock_timedrdlock = tl_sym("pthread_rwlock_timedrdlock", NULL);
+    real.rwlock_timedwrlock = tl_sym("pthread_rwlock_timedwrlock", NULL);
+    real.rwlock_clockrdlock = tl_sym("pthread_rwlock_clockrdlock", NULL);
+    real.rwlock_clockwrlock = tl_sym("pthread_rwlock_clockwrlock", NULL);
+    real.rwlock_unlock      = tl_sym("pthread_rwlock_unlock", NULL);
+    real.sem_init           = tl_sym("sem_init", NULL);
+    real.sem_destroy        = tl_sym("sem_destroy", NULL);
+    real.sem_wait           = tl_sym("sem_wait", NULL);
+    real.sem_trywait        = tl_sym("sem_trywait", NULL);
+    real.sem_timedwait      = tl_sym("sem_timedwait", NULL);
+    real.sem_clockwait      = tl_sym("sem_clockwait", NULL);
+    real.sem_post           = tl_sym("sem_post", NULL);
 }
 
 /* Wrappers may run before the constructor (e.g. from another library's
@@ -210,6 +250,35 @@ static inline uint64_t tl_mutex_owner(pthread_mutex_t *m)
 #else
     (void)m; return 0;
 #endif
+}
+
+/* Same idea for rwlocks: glibc keeps the preference kind (__flags) and the
+ * TID of the current writer (__cur_writer, 0 while readers or nobody hold it).
+ * glibc does not record which threads hold read locks. */
+static inline uint32_t tl_rw_kind(pthread_rwlock_t *rw)
+{
+#ifdef __GLIBC__
+    return rw ? (uint32_t)__atomic_load_n(&rw->__data.__flags, __ATOMIC_RELAXED) : 0;
+#else
+    (void)rw; return 0;
+#endif
+}
+
+static inline uint32_t tl_rw_writer(pthread_rwlock_t *rw)
+{
+#ifdef __GLIBC__
+    return rw ? (uint32_t)__atomic_load_n(&rw->__data.__cur_writer, __ATOMIC_RELAXED) : 0;
+#else
+    (void)rw; return 0;
+#endif
+}
+
+/* Semaphore count before the call (informational: it can change at any time). */
+static inline uint64_t tl_sem_value(sem_t *s)
+{
+    int v = 0;
+    if (!s || sem_getvalue(s, &v) != 0 || v < 0) v = 0;
+    return (uint64_t)v;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -866,5 +935,239 @@ TL_EXPORT int pthread_barrier_wait(pthread_barrier_t *b)
     int serial = (rc == PTHREAD_BARRIER_SERIAL_THREAD);
     tl_emit(TL_EV_BARRIER_WAIT_END, serial ? TL_F_SERIAL : 0, (uint64_t)(uintptr_t)b, 0, caller,
             serial ? 0 : rc, 0);
+    return rc;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Read-write locks                                                          */
+/* ------------------------------------------------------------------------ */
+
+TL_EXPORT int pthread_rwlock_init(pthread_rwlock_t *rw, const pthread_rwlockattr_t *attr)
+{
+    int rc = TL_REAL(rwlock_init)(rw, attr);
+    if (tl_trace())
+        tl_emit(TL_EV_RWLOCK_INIT, 0, (uint64_t)(uintptr_t)rw, 0, __builtin_return_address(0),
+                rc, rc == 0 ? tl_rw_kind(rw) : 0);
+    return rc;
+}
+
+TL_EXPORT int pthread_rwlock_destroy(pthread_rwlock_t *rw)
+{
+    int rc = TL_REAL(rwlock_destroy)(rw);
+    if (tl_trace())
+        tl_emit(TL_EV_RWLOCK_DESTROY, 0, (uint64_t)(uintptr_t)rw, 0, __builtin_return_address(0), rc, 0);
+    return rc;
+}
+
+/* Request (before the real call) for the blocking variants. Returns t0. */
+static inline uint64_t tl_rw_request(pthread_rwlock_t *rw, uint32_t extra, uint16_t flags, const void *caller)
+{
+    uint64_t t0 = tl_now();
+    tl_emit(TL_EV_RW_REQUEST, flags, (uint64_t)(uintptr_t)rw, tl_rw_writer(rw), caller, 0, extra);
+    return t0;
+}
+
+static inline void tl_rw_result(pthread_rwlock_t *rw, int rc, uint16_t flags, uint64_t t0,
+                                const void *caller, uint32_t extra)
+{
+    uint64_t waited = tl_now() - t0;
+    tl_emit(rc == 0 ? TL_EV_RW_ACQUIRED : TL_EV_RW_FAILED, flags, (uint64_t)(uintptr_t)rw, waited,
+            caller, rc, extra);
+}
+
+TL_EXPORT int pthread_rwlock_rdlock(pthread_rwlock_t *rw)
+{
+    if (!tl_trace()) return TL_REAL(rwlock_rdlock)(rw);
+    const void *caller = __builtin_return_address(0);
+    uint32_t extra = TL_RW_EXTRA(TL_RW_READ, tl_rw_kind(rw));
+    uint64_t t0 = tl_rw_request(rw, extra, 0, caller);
+    int rc = TL_REAL(rwlock_rdlock)(rw);
+    tl_rw_result(rw, rc, 0, t0, caller, extra);
+    return rc;
+}
+
+TL_EXPORT int pthread_rwlock_wrlock(pthread_rwlock_t *rw)
+{
+    if (!tl_trace()) return TL_REAL(rwlock_wrlock)(rw);
+    const void *caller = __builtin_return_address(0);
+    uint32_t extra = TL_RW_EXTRA(TL_RW_WRITE, tl_rw_kind(rw));
+    uint64_t t0 = tl_rw_request(rw, extra, 0, caller);
+    int rc = TL_REAL(rwlock_wrlock)(rw);
+    tl_rw_result(rw, rc, 0, t0, caller, extra);
+    return rc;
+}
+
+TL_EXPORT int pthread_rwlock_tryrdlock(pthread_rwlock_t *rw)
+{
+    if (!tl_trace()) return TL_REAL(rwlock_tryrdlock)(rw);
+    /* never blocks: only the outcome is recorded (like pthread_mutex_trylock) */
+    uint32_t extra = TL_RW_EXTRA(TL_RW_READ, tl_rw_kind(rw));
+    uint64_t t0 = tl_now();
+    int rc = TL_REAL(rwlock_tryrdlock)(rw);
+    tl_rw_result(rw, rc, TL_F_TRY, t0, __builtin_return_address(0), extra);
+    return rc;
+}
+
+TL_EXPORT int pthread_rwlock_trywrlock(pthread_rwlock_t *rw)
+{
+    if (!tl_trace()) return TL_REAL(rwlock_trywrlock)(rw);
+    uint32_t extra = TL_RW_EXTRA(TL_RW_WRITE, tl_rw_kind(rw));
+    uint64_t t0 = tl_now();
+    int rc = TL_REAL(rwlock_trywrlock)(rw);
+    tl_rw_result(rw, rc, TL_F_TRY, t0, __builtin_return_address(0), extra);
+    return rc;
+}
+
+TL_EXPORT int pthread_rwlock_timedrdlock(pthread_rwlock_t *rw, const struct timespec *abstime)
+{
+    if (!tl_trace()) return TL_REAL(rwlock_timedrdlock)(rw, abstime);
+    const void *caller = __builtin_return_address(0);
+    uint32_t extra = TL_RW_EXTRA(TL_RW_READ, tl_rw_kind(rw));
+    uint64_t t0 = tl_rw_request(rw, extra, TL_F_TIMED, caller);
+    int rc = TL_REAL(rwlock_timedrdlock)(rw, abstime);
+    tl_rw_result(rw, rc, TL_F_TIMED, t0, caller, extra);
+    return rc;
+}
+
+TL_EXPORT int pthread_rwlock_timedwrlock(pthread_rwlock_t *rw, const struct timespec *abstime)
+{
+    if (!tl_trace()) return TL_REAL(rwlock_timedwrlock)(rw, abstime);
+    const void *caller = __builtin_return_address(0);
+    uint32_t extra = TL_RW_EXTRA(TL_RW_WRITE, tl_rw_kind(rw));
+    uint64_t t0 = tl_rw_request(rw, extra, TL_F_TIMED, caller);
+    int rc = TL_REAL(rwlock_timedwrlock)(rw, abstime);
+    tl_rw_result(rw, rc, TL_F_TIMED, t0, caller, extra);
+    return rc;
+}
+
+TL_EXPORT int pthread_rwlock_clockrdlock(pthread_rwlock_t *rw, clockid_t clk, const struct timespec *abstime)
+{
+    if (!TL_REAL(rwlock_clockrdlock)) return ENOSYS;
+    if (!tl_trace()) return real.rwlock_clockrdlock(rw, clk, abstime);
+    const void *caller = __builtin_return_address(0);
+    uint32_t extra = TL_RW_EXTRA(TL_RW_READ, tl_rw_kind(rw));
+    uint64_t t0 = tl_rw_request(rw, extra, TL_F_TIMED, caller);
+    int rc = real.rwlock_clockrdlock(rw, clk, abstime);
+    tl_rw_result(rw, rc, TL_F_TIMED, t0, caller, extra);
+    return rc;
+}
+
+TL_EXPORT int pthread_rwlock_clockwrlock(pthread_rwlock_t *rw, clockid_t clk, const struct timespec *abstime)
+{
+    if (!TL_REAL(rwlock_clockwrlock)) return ENOSYS;
+    if (!tl_trace()) return real.rwlock_clockwrlock(rw, clk, abstime);
+    const void *caller = __builtin_return_address(0);
+    uint32_t extra = TL_RW_EXTRA(TL_RW_WRITE, tl_rw_kind(rw));
+    uint64_t t0 = tl_rw_request(rw, extra, TL_F_TIMED, caller);
+    int rc = real.rwlock_clockwrlock(rw, clk, abstime);
+    tl_rw_result(rw, rc, TL_F_TIMED, t0, caller, extra);
+    return rc;
+}
+
+TL_EXPORT int pthread_rwlock_unlock(pthread_rwlock_t *rw)
+{
+    if (!tl_trace()) return TL_REAL(rwlock_unlock)(rw);
+    /* glibc decides between read and write unlock the same way: by comparing
+     * __cur_writer with the caller's TID. The backend uses its own ownership
+     * state and only cross-checks this hint. */
+    uint32_t mode = tl_rw_writer(rw) == tl_gettid() ? TL_RW_WRITE : TL_RW_READ;
+    /* recorded BEFORE the real unlock: see ordering rule at top of file */
+    tl_emit(TL_EV_RW_RELEASE, 0, (uint64_t)(uintptr_t)rw, 0, __builtin_return_address(0), 0,
+            TL_RW_EXTRA(mode, tl_rw_kind(rw)));
+    return TL_REAL(rwlock_unlock)(rw); /* glibc's rwlock unlock always returns 0 */
+}
+
+/* ------------------------------------------------------------------------ */
+/* POSIX semaphores (unnamed and named: sem_open'ed semaphores are waited on  */
+/* and posted with the same functions; only their creation is not seen).     */
+/* These functions report errors through errno, which the wrappers preserve. */
+/* ------------------------------------------------------------------------ */
+
+TL_EXPORT int sem_init(sem_t *s, int pshared, unsigned int value)
+{
+    int rc = TL_REAL(sem_init)(s, pshared, value);
+    if (tl_trace()) {
+        int err = rc == 0 ? 0 : errno;
+        tl_emit(TL_EV_SEM_INIT, 0, (uint64_t)(uintptr_t)s, value, __builtin_return_address(0), err,
+                (uint32_t)pshared);
+        if (rc != 0) errno = err;
+    }
+    return rc;
+}
+
+TL_EXPORT int sem_destroy(sem_t *s)
+{
+    int rc = TL_REAL(sem_destroy)(s);
+    if (tl_trace()) {
+        int err = rc == 0 ? 0 : errno;
+        tl_emit(TL_EV_SEM_DESTROY, 0, (uint64_t)(uintptr_t)s, 0, __builtin_return_address(0), err, 0);
+        if (rc != 0) errno = err;
+    }
+    return rc;
+}
+
+static inline void tl_sem_end(sem_t *s, int rc, uint16_t flags, uint64_t t0, const void *caller)
+{
+    int err = rc == 0 ? 0 : errno;
+    tl_emit(TL_EV_SEM_WAIT_END, flags, (uint64_t)(uintptr_t)s, tl_now() - t0, caller, err, 0);
+    if (err) errno = err;
+}
+
+TL_EXPORT int sem_wait(sem_t *s)
+{
+    if (!tl_trace()) return TL_REAL(sem_wait)(s);
+    const void *caller = __builtin_return_address(0);
+    uint64_t t0 = tl_now();
+    tl_emit(TL_EV_SEM_WAIT_BEGIN, 0, (uint64_t)(uintptr_t)s, tl_sem_value(s), caller, 0, 0);
+    int rc = TL_REAL(sem_wait)(s);
+    tl_sem_end(s, rc, 0, t0, caller);
+    return rc;
+}
+
+TL_EXPORT int sem_trywait(sem_t *s)
+{
+    if (!tl_trace()) return TL_REAL(sem_trywait)(s);
+    /* never blocks: only the outcome is recorded */
+    uint64_t t0 = tl_now();
+    int rc = TL_REAL(sem_trywait)(s);
+    tl_sem_end(s, rc, TL_F_TRY, t0, __builtin_return_address(0));
+    return rc;
+}
+
+TL_EXPORT int sem_timedwait(sem_t *s, const struct timespec *abstime)
+{
+    if (!tl_trace()) return TL_REAL(sem_timedwait)(s, abstime);
+    const void *caller = __builtin_return_address(0);
+    uint64_t t0 = tl_now();
+    tl_emit(TL_EV_SEM_WAIT_BEGIN, TL_F_TIMED, (uint64_t)(uintptr_t)s, tl_sem_value(s), caller, 0, 0);
+    int rc = TL_REAL(sem_timedwait)(s, abstime);
+    tl_sem_end(s, rc, TL_F_TIMED, t0, caller);
+    return rc;
+}
+
+TL_EXPORT int sem_clockwait(sem_t *s, clockid_t clk, const struct timespec *abstime)
+{
+    if (!TL_REAL(sem_clockwait)) { errno = ENOSYS; return -1; }
+    if (!tl_trace()) return real.sem_clockwait(s, clk, abstime);
+    const void *caller = __builtin_return_address(0);
+    uint64_t t0 = tl_now();
+    tl_emit(TL_EV_SEM_WAIT_BEGIN, TL_F_TIMED, (uint64_t)(uintptr_t)s, tl_sem_value(s), caller, 0, 0);
+    int rc = real.sem_clockwait(s, clk, abstime);
+    tl_sem_end(s, rc, TL_F_TIMED, t0, caller);
+    return rc;
+}
+
+TL_EXPORT int sem_post(sem_t *s)
+{
+    if (!tl_trace()) return TL_REAL(sem_post)(s);
+    const void *caller = __builtin_return_address(0);
+    /* recorded BEFORE the real post: see ordering rule at top of file */
+    tl_emit(TL_EV_SEM_POST, 0, (uint64_t)(uintptr_t)s, tl_sem_value(s), caller, 0, 0);
+    int rc = TL_REAL(sem_post)(s);
+    if (rc != 0) {
+        int err = errno;
+        tl_emit(TL_EV_SEM_POST_FAILED, 0, (uint64_t)(uintptr_t)s, 0, caller, err, 0);
+        errno = err;
+    }
     return rc;
 }

@@ -15,7 +15,7 @@
  *  16     8    ts_ns     CLOCK_MONOTONIC nanoseconds
  *  24     4    pid       process id
  *  28     4    tid       kernel thread id (gettid)
- *  32     8    obj       primary object (mutex/cond/barrier address, pthread_t, ...)
+ *  32     8    obj       primary object (mutex/rwlock/cond/sem/barrier address, pthread_t, ...)
  *  40     8    aux       secondary value (see per-type notes)
  *  48     8    caller    return address of the intercepted call (for symbolization)
  *  56     4    result    return code / errno value (0 = success)
@@ -73,12 +73,34 @@ typedef enum tl_event_type {
     TL_EV_BARRIER_WAIT_END   = 41, /* obj=barrier, result=rc (PTHREAD_BARRIER_SERIAL_THREAD = -1 -> stored as 0, extra=1) */
 
     /* annotations */
-    TL_EV_USER_MARK        = 50  /* string payload (tl_mark) */
+    TL_EV_USER_MARK        = 50, /* string payload (tl_mark) */
+
+    /* read-write locks (shared readers / one exclusive writer). extra = TL_RW_EXTRA(mode, kind) */
+    TL_EV_RWLOCK_INIT      = 60, /* obj=rwlock, extra=kind (glibc __flags), result=rc */
+    TL_EV_RWLOCK_DESTROY   = 61, /* obj=rwlock, result=rc */
+    TL_EV_RW_REQUEST       = 62, /* obj=rwlock, aux=writer TID seen in glibc rwlock, extra=mode|kind, flags TIMED */
+    TL_EV_RW_ACQUIRED      = 63, /* obj=rwlock, aux=wait ns, extra=mode|kind, flags TIMED/TRY */
+    TL_EV_RW_FAILED        = 64, /* obj=rwlock, aux=wait ns, extra=mode|kind, result=errno (EBUSY, ETIMEDOUT, EDEADLK, EAGAIN...) */
+    TL_EV_RW_RELEASE       = 65, /* obj=rwlock, extra=mode glibc says we hold|kind (recorded BEFORE the real unlock) */
+
+    /* POSIX semaphores (no owner: never wait-for edges) */
+    TL_EV_SEM_INIT         = 70, /* obj=sem, aux=initial value, extra=pshared, result=errno */
+    TL_EV_SEM_DESTROY      = 71, /* obj=sem, result=errno */
+    TL_EV_SEM_WAIT_BEGIN   = 72, /* obj=sem, aux=value seen at the call, flags TIMED */
+    TL_EV_SEM_WAIT_END     = 73, /* obj=sem, aux=wait ns, result=0|errno (EAGAIN, ETIMEDOUT, EINTR...), flags TIMED/TRY */
+    TL_EV_SEM_POST         = 74, /* obj=sem, aux=value seen before the post (recorded BEFORE the real post) */
+    TL_EV_SEM_POST_FAILED  = 75  /* obj=sem, result=errno (EOVERFLOW, EINVAL) */
 } tl_event_type;
 
+/* rwlock records: extra = mode in bits 0..7, glibc rwlock kind in bits 8..15 */
+#define TL_RW_READ        0u
+#define TL_RW_WRITE       1u
+#define TL_RW_KIND_SHIFT  8
+#define TL_RW_EXTRA(mode, kind) ((uint32_t)(mode) | (((uint32_t)(kind) & 0xffu) << TL_RW_KIND_SHIFT))
+
 /* flags */
-#define TL_F_TIMED     0x0001u /* timed variant (timedlock / clocklock / cond_timedwait) */
-#define TL_F_TRY       0x0002u /* trylock variant */
+#define TL_F_TIMED     0x0001u /* timed variant (timedlock / clocklock / cond_timedwait / timed rwlock / sem_timedwait) */
+#define TL_F_TRY       0x0002u /* trylock / tryrdlock / trywrlock / sem_trywait variant */
 #define TL_F_OOB       0x0004u /* out-of-band collector record; seq is not a ring position */
 #define TL_F_INFERRED  0x0008u /* event inferred by the collector (e.g. cond wait ended by cancellation) */
 #define TL_F_LATE      0x0010u /* thread discovered late (not created through an intercepted pthread_create) */
