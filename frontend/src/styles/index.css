@@ -1,0 +1,287 @@
+@import "tailwindcss";
+
+/* ----------------------------------------------------------------------------
+ * ThreadLens design tokens
+ * Semantic CSS variables switch with [data-theme]; Tailwind utilities map to
+ * them through `@theme inline`, so components never hard-code colours.
+ * -------------------------------------------------------------------------- */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #06080f;
+  --bg-elev: #0a0e18;
+  --surface: #0d1320;
+  --surface-2: #121a2b;
+  --surface-3: #182238;
+  --line: rgb(148 163 184 / 0.1);
+  --line-strong: rgb(148 163 184 / 0.2);
+  --fg: #e7ecf6;
+  --fg-2: #a6b0c5;
+  --fg-3: #6f7a93;
+  --cyan: #3ddcff;
+  --cyan-2: #1fb3d6;
+  --violet: #9283ff;
+  --crit: #ff4d6d;
+  --warn: #ffb547;
+  --ok: #34d399;
+  --info: #6ea2ff;
+  --grid: rgb(61 220 255 / 0.05);
+  --glow-cyan: 0 0 0 1px rgb(61 220 255 / 0.22), 0 10px 40px -14px rgb(61 220 255 / 0.45);
+  --glow-crit: 0 0 0 1px rgb(255 77 109 / 0.35), 0 10px 40px -12px rgb(255 77 109 / 0.5);
+  --shadow-card: 0 1px 0 0 rgb(255 255 255 / 0.03) inset, 0 20px 40px -24px rgb(0 0 0 / 0.8);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f6fb;
+  --bg-elev: #eef2f8;
+  --surface: #ffffff;
+  --surface-2: #f5f7fb;
+  --surface-3: #e9eef6;
+  --line: rgb(15 23 42 / 0.09);
+  --line-strong: rgb(15 23 42 / 0.16);
+  --fg: #0c1424;
+  --fg-2: #3b4760;
+  --fg-3: #5d6a84;
+  --cyan: #0b8fb0;
+  --cyan-2: #0a7896;
+  --violet: #5b4bdc;
+  --crit: #d2264a;
+  --warn: #b26b00;
+  --ok: #0f8a5f;
+  --info: #2d62d8;
+  --grid: rgb(11 143 176 / 0.06);
+  --glow-cyan: 0 0 0 1px rgb(11 143 176 / 0.25), 0 10px 30px -14px rgb(11 143 176 / 0.35);
+  --glow-crit: 0 0 0 1px rgb(210 38 74 / 0.3), 0 10px 30px -12px rgb(210 38 74 / 0.35);
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.05), 0 12px 30px -20px rgb(15 23 42 / 0.25);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-elev: var(--bg-elev);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-cyan: var(--cyan);
+  --color-cyan-2: var(--cyan-2);
+  --color-violet: var(--violet);
+  --color-crit: var(--crit);
+  --color-warn: var(--warn);
+  --color-ok: var(--ok);
+  --color-info: var(--info);
+}
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --radius-card: 14px;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+  --animate-pulse-ring: pulse-ring 1.8s var(--ease-out-expo) infinite;
+  --animate-dash: dash 1.2s linear infinite;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 currentColor; opacity: 0.9; }
+    100% { box-shadow: 0 0 0 8px transparent; opacity: 0; }
+  }
+  @keyframes dash {
+    to { stroke-dashoffset: -16; }
+  }
+  @keyframes shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+}
+
+/* ---------------------------------------------------------------- base */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01", "ss03";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--cyan) 35%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+  code,
+  kbd,
+  pre,
+  .mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "zero", "ss02";
+  }
+}
+
+/* ---------------------------------------------------------------- components */
+@layer components {
+  .card {
+    background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 92%, white 2%), var(--surface));
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+  }
+  .card-raised {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .hairline {
+    border-color: var(--line);
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-3);
+  }
+  .grid-bg {
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 10px;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: 1px solid var(--line-strong);
+    background: var(--surface-2);
+    color: var(--fg);
+    transition:
+      background-color 160ms var(--ease-out-expo),
+      border-color 160ms var(--ease-out-expo),
+      box-shadow 200ms var(--ease-out-expo),
+      transform 120ms var(--ease-out-expo);
+  }
+  .btn:hover:not(:disabled) {
+    background: var(--surface-3);
+    border-color: color-mix(in oklab, var(--cyan) 30%, var(--line-strong));
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: linear-gradient(180deg, color-mix(in oklab, var(--cyan) 92%, white 8%), var(--cyan-2));
+    color: #021018;
+    border-color: transparent;
+    box-shadow: var(--glow-cyan);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(180deg, color-mix(in oklab, var(--cyan) 85%, white 15%), var(--cyan));
+    border-color: transparent;
+  }
+  .btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--fg-2);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--surface-2);
+    color: var(--fg);
+  }
+  .btn-danger {
+    color: var(--crit);
+    border-color: color-mix(in oklab, var(--crit) 35%, transparent);
+    background: color-mix(in oklab, var(--crit) 8%, var(--surface-2));
+  }
+  .input {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-elev);
+    color: var(--fg);
+    padding: 0.45rem 0.7rem;
+    font-size: 0.875rem;
+    transition: border-color 160ms, box-shadow 160ms;
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--cyan) 18%, transparent);
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.12rem 0.55rem;
+    font-size: 0.75rem;
+    border: 1px solid var(--line-strong);
+    background: var(--surface-2);
+    color: var(--fg-2);
+    white-space: nowrap;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 40%, var(--surface-2) 80%);
+    background-size: 800px 100%;
+    animation: var(--animate-shimmer);
+    border-radius: 8px;
+  }
+  .text-gradient {
+    background: linear-gradient(100deg, var(--fg) 20%, var(--cyan) 55%, var(--violet) 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .tilt {
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+}
+
+/* reduced effects (user setting or OS preference) */
+[data-effects="reduced"] *,
+[data-effects="reduced"] *::before,
+[data-effects="reduced"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-effects="system"] *,
+  [data-effects="system"] *::before,
+  [data-effects="system"] *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* cytoscape container should not show focus ring on canvas */
+.cy-host canvas:focus {
+  outline: none;
+}
