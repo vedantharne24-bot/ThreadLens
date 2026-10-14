@@ -1,0 +1,20 @@
+# build outputs
+/build/
+/frontend/dist/
+/frontend/node_modules/
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# traces and local data
+*.tlt
+/data/
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
