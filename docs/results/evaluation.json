@@ -1,0 +1,2106 @@
+{
+  "environment": {
+    "date": "2026-10-14 05:24:26 UTC",
+    "kernel": "6.18.33.2-microsoft-standard-WSL2",
+    "os": "Ubuntu 26.04.1 LTS",
+    "cpu": "Intel(R) Core(TM) Ultra 9 185H",
+    "logical_cpus": 22,
+    "glibc": "ldd (Ubuntu GLIBC 2.43-2ubuntu2.4) 2.43",
+    "gcc": "gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+    "python": "3.14.4",
+    "wsl": true
+  },
+  "reps": 5,
+  "accuracy": {
+    "runs": [
+      {
+        "scenario": "bank-deadlock",
+        "rep": 0,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 31,
+        "lost": 0,
+        "wall_ms": 1022.8,
+        "latency_ms": 1.526063,
+        "confirmation_delay_ms": 1.377239,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "bank-deadlock",
+        "rep": 1,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 31,
+        "lost": 0,
+        "wall_ms": 1022.0,
+        "latency_ms": 1.865218,
+        "confirmation_delay_ms": 1.719958,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "bank-deadlock",
+        "rep": 2,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 31,
+        "lost": 0,
+        "wall_ms": 1019.55,
+        "latency_ms": 2.302364,
+        "confirmation_delay_ms": 2.132512,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "bank-deadlock",
+        "rep": 3,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 31,
+        "lost": 0,
+        "wall_ms": 1018.54,
+        "latency_ms": 2.191449,
+        "confirmation_delay_ms": 2.034797,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "bank-deadlock",
+        "rep": 4,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 31,
+        "lost": 0,
+        "wall_ms": 1029.2,
+        "latency_ms": 2.390759,
+        "confirmation_delay_ms": 2.236104,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "bank-ordered",
+        "rep": 0,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 92,
+        "lost": 0,
+        "wall_ms": 167.87,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "bank-ordered",
+        "rep": 1,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 92,
+        "lost": 0,
+        "wall_ms": 166.39,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "bank-ordered",
+        "rep": 2,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 92,
+        "lost": 0,
+        "wall_ms": 172.16,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "bank-ordered",
+        "rep": 3,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 92,
+        "lost": 0,
+        "wall_ms": 170.35,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "bank-ordered",
+        "rep": 4,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 92,
+        "lost": 0,
+        "wall_ms": 169.04,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "bank-deadlock-cpp",
+        "rep": 0,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 29,
+        "lost": 0,
+        "wall_ms": 1027.17,
+        "latency_ms": 2.207499,
+        "confirmation_delay_ms": 1.959259,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "bank-deadlock-cpp",
+        "rep": 1,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 29,
+        "lost": 0,
+        "wall_ms": 1035.71,
+        "latency_ms": 2.202787,
+        "confirmation_delay_ms": 2.022135,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "bank-deadlock-cpp",
+        "rep": 2,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 29,
+        "lost": 0,
+        "wall_ms": 1027.97,
+        "latency_ms": 2.352692,
+        "confirmation_delay_ms": 2.135726,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "bank-deadlock-cpp",
+        "rep": 3,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 29,
+        "lost": 0,
+        "wall_ms": 1020.33,
+        "latency_ms": 1.87076,
+        "confirmation_delay_ms": 1.698924,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "bank-deadlock-cpp",
+        "rep": 4,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 29,
+        "lost": 0,
+        "wall_ms": 1026.07,
+        "latency_ms": 2.879059,
+        "confirmation_delay_ms": 2.712352,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "bank-scoped-cpp",
+        "rep": 0,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 80,
+        "lost": 0,
+        "wall_ms": 20.7,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "bank-scoped-cpp",
+        "rep": 1,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 80,
+        "lost": 0,
+        "wall_ms": 18.09,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "bank-scoped-cpp",
+        "rep": 2,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 80,
+        "lost": 0,
+        "wall_ms": 16.55,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "bank-scoped-cpp",
+        "rep": 3,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 80,
+        "lost": 0,
+        "wall_ms": 19.54,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "bank-scoped-cpp",
+        "rep": 4,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 80,
+        "lost": 0,
+        "wall_ms": 16.48,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "healthy",
+        "rep": 0,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 631,
+        "lost": 0,
+        "wall_ms": 22.56,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "healthy",
+        "rep": 1,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 631,
+        "lost": 0,
+        "wall_ms": 26.11,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "healthy",
+        "rep": 2,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 631,
+        "lost": 0,
+        "wall_ms": 23.68,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "healthy",
+        "rep": 3,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 631,
+        "lost": 0,
+        "wall_ms": 26.24,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "healthy",
+        "rep": 4,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 631,
+        "lost": 0,
+        "wall_ms": 21.41,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "contention",
+        "rep": 0,
+        "verdict": "excessive_contention",
+        "expected_verdict": "excessive_contention",
+        "verdict_ok": true,
+        "reported": [
+          "excessive_contention"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 414,
+        "lost": 0,
+        "wall_ms": 268.22,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "contention",
+        "rep": 1,
+        "verdict": "excessive_contention",
+        "expected_verdict": "excessive_contention",
+        "verdict_ok": true,
+        "reported": [
+          "excessive_contention"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 414,
+        "lost": 0,
+        "wall_ms": 271.06,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "contention",
+        "rep": 2,
+        "verdict": "excessive_contention",
+        "expected_verdict": "excessive_contention",
+        "verdict_ok": true,
+        "reported": [
+          "excessive_contention"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 414,
+        "lost": 0,
+        "wall_ms": 266.67,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "contention",
+        "rep": 3,
+        "verdict": "excessive_contention",
+        "expected_verdict": "excessive_contention",
+        "verdict_ok": true,
+        "reported": [
+          "excessive_contention"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 414,
+        "lost": 0,
+        "wall_ms": 262.01,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "contention",
+        "rep": 4,
+        "verdict": "excessive_contention",
+        "expected_verdict": "excessive_contention",
+        "verdict_ok": true,
+        "reported": [
+          "excessive_contention"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 414,
+        "lost": 0,
+        "wall_ms": 265.45,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "producer-consumer",
+        "rep": 0,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 1456,
+        "lost": 0,
+        "wall_ms": 26.62,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "producer-consumer",
+        "rep": 1,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 1474,
+        "lost": 0,
+        "wall_ms": 27.57,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "producer-consumer",
+        "rep": 2,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 1426,
+        "lost": 0,
+        "wall_ms": 25.02,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "producer-consumer",
+        "rep": 3,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 1416,
+        "lost": 0,
+        "wall_ms": 20.45,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "producer-consumer",
+        "rep": 4,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 1438,
+        "lost": 0,
+        "wall_ms": 25.21,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-both",
+        "rep": 0,
+        "verdict": "potential_deadlock",
+        "expected_verdict": "potential_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "potential_deadlock"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 42,
+        "lost": 0,
+        "wall_ms": 135.54,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-both",
+        "rep": 1,
+        "verdict": "potential_deadlock",
+        "expected_verdict": "potential_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "potential_deadlock"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 42,
+        "lost": 0,
+        "wall_ms": 48.0,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-both",
+        "rep": 2,
+        "verdict": "potential_deadlock",
+        "expected_verdict": "potential_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "potential_deadlock"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 42,
+        "lost": 0,
+        "wall_ms": 54.47,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-both",
+        "rep": 3,
+        "verdict": "potential_deadlock",
+        "expected_verdict": "potential_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "potential_deadlock"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 42,
+        "lost": 0,
+        "wall_ms": 57.42,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-both",
+        "rep": 4,
+        "verdict": "potential_deadlock",
+        "expected_verdict": "potential_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "potential_deadlock"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 42,
+        "lost": 0,
+        "wall_ms": 97.88,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-ab",
+        "rep": 0,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 16.57,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-ab",
+        "rep": 1,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 13.58,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-ab",
+        "rep": 2,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 20.88,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-ab",
+        "rep": 3,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 17.83,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-ab",
+        "rep": 4,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 14.7,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-ba",
+        "rep": 0,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 17.42,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-ba",
+        "rep": 1,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 38.48,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-ba",
+        "rep": 2,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 28.8,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-ba",
+        "rep": 3,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 14.14,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lock-order-ba",
+        "rep": 4,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 16.47,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lifecycle",
+        "rep": 0,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 57,
+        "lost": 0,
+        "wall_ms": 18.24,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lifecycle",
+        "rep": 1,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 57,
+        "lost": 0,
+        "wall_ms": 16.23,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lifecycle",
+        "rep": 2,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 57,
+        "lost": 0,
+        "wall_ms": 14.72,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lifecycle",
+        "rep": 3,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 55,
+        "lost": 0,
+        "wall_ms": 18.03,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lifecycle",
+        "rep": 4,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 57,
+        "lost": 0,
+        "wall_ms": 19.46,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "misuse",
+        "rep": 0,
+        "verdict": "api_misuse",
+        "expected_verdict": "api_misuse",
+        "verdict_ok": true,
+        "reported": [
+          "api_misuse"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 65,
+        "lost": 0,
+        "wall_ms": 277.55,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "misuse",
+        "rep": 1,
+        "verdict": "api_misuse",
+        "expected_verdict": "api_misuse",
+        "verdict_ok": true,
+        "reported": [
+          "api_misuse"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 65,
+        "lost": 0,
+        "wall_ms": 249.85,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "misuse",
+        "rep": 2,
+        "verdict": "api_misuse",
+        "expected_verdict": "api_misuse",
+        "verdict_ok": true,
+        "reported": [
+          "api_misuse"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 65,
+        "lost": 0,
+        "wall_ms": 252.69,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "misuse",
+        "rep": 3,
+        "verdict": "api_misuse",
+        "expected_verdict": "api_misuse",
+        "verdict_ok": true,
+        "reported": [
+          "api_misuse"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 65,
+        "lost": 0,
+        "wall_ms": 281.23,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "misuse",
+        "rep": 4,
+        "verdict": "api_misuse",
+        "expected_verdict": "api_misuse",
+        "verdict_ok": true,
+        "reported": [
+          "api_misuse"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 65,
+        "lost": 0,
+        "wall_ms": 268.96,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "self-deadlock",
+        "rep": 0,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 20,
+        "lost": 0,
+        "wall_ms": 1017.7,
+        "latency_ms": 2.504958,
+        "confirmation_delay_ms": 2.343957,
+        "cycle_length": 1
+      },
+      {
+        "scenario": "self-deadlock",
+        "rep": 1,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 20,
+        "lost": 0,
+        "wall_ms": 1025.55,
+        "latency_ms": 2.429797,
+        "confirmation_delay_ms": 2.185932,
+        "cycle_length": 1
+      },
+      {
+        "scenario": "self-deadlock",
+        "rep": 2,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 20,
+        "lost": 0,
+        "wall_ms": 1025.05,
+        "latency_ms": 2.956656,
+        "confirmation_delay_ms": 2.65775,
+        "cycle_length": 1
+      },
+      {
+        "scenario": "self-deadlock",
+        "rep": 3,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 20,
+        "lost": 0,
+        "wall_ms": 1054.29,
+        "latency_ms": 2.5305,
+        "confirmation_delay_ms": 2.346256,
+        "cycle_length": 1
+      },
+      {
+        "scenario": "self-deadlock",
+        "rep": 4,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 20,
+        "lost": 0,
+        "wall_ms": 1027.09,
+        "latency_ms": 2.664257,
+        "confirmation_delay_ms": 2.499098,
+        "cycle_length": 1
+      },
+      {
+        "scenario": "philosophers",
+        "rep": 0,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 70,
+        "lost": 0,
+        "wall_ms": 1019.2,
+        "latency_ms": 1.556235,
+        "confirmation_delay_ms": 1.412528,
+        "cycle_length": 5
+      },
+      {
+        "scenario": "philosophers",
+        "rep": 1,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 70,
+        "lost": 0,
+        "wall_ms": 1023.94,
+        "latency_ms": 2.195921,
+        "confirmation_delay_ms": 1.985813,
+        "cycle_length": 5
+      },
+      {
+        "scenario": "philosophers",
+        "rep": 2,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 70,
+        "lost": 0,
+        "wall_ms": 1023.9,
+        "latency_ms": 1.361787,
+        "confirmation_delay_ms": 1.212649,
+        "cycle_length": 5
+      },
+      {
+        "scenario": "philosophers",
+        "rep": 3,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 70,
+        "lost": 0,
+        "wall_ms": 1024.32,
+        "latency_ms": 1.581766,
+        "confirmation_delay_ms": 1.406225,
+        "cycle_length": 5
+      },
+      {
+        "scenario": "philosophers",
+        "rep": 4,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 70,
+        "lost": 0,
+        "wall_ms": 1022.64,
+        "latency_ms": 1.724445,
+        "confirmation_delay_ms": 1.474032,
+        "cycle_length": 5
+      },
+      {
+        "scenario": "philosophers-fixed",
+        "rep": 0,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 161,
+        "lost": 0,
+        "wall_ms": 173.02,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "philosophers-fixed",
+        "rep": 1,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 161,
+        "lost": 0,
+        "wall_ms": 167.58,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "philosophers-fixed",
+        "rep": 2,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 161,
+        "lost": 0,
+        "wall_ms": 171.66,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "philosophers-fixed",
+        "rep": 3,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 161,
+        "lost": 0,
+        "wall_ms": 175.31,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "philosophers-fixed",
+        "rep": 4,
+        "verdict": "no_issue",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 161,
+        "lost": 0,
+        "wall_ms": 177.99,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "join-deadlock",
+        "rep": 0,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 11,
+        "lost": 0,
+        "wall_ms": 1025.88,
+        "latency_ms": 2.032732,
+        "confirmation_delay_ms": 1.867638,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "join-deadlock",
+        "rep": 1,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 11,
+        "lost": 0,
+        "wall_ms": 1030.95,
+        "latency_ms": 1.660326,
+        "confirmation_delay_ms": 1.414153,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "join-deadlock",
+        "rep": 2,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 11,
+        "lost": 0,
+        "wall_ms": 1026.83,
+        "latency_ms": 3.283032,
+        "confirmation_delay_ms": 2.640752,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "join-deadlock",
+        "rep": 3,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 11,
+        "lost": 0,
+        "wall_ms": 1022.1,
+        "latency_ms": 2.0033,
+        "confirmation_delay_ms": 1.845279,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "join-deadlock",
+        "rep": 4,
+        "verdict": "confirmed_deadlock",
+        "expected_verdict": "confirmed_deadlock",
+        "verdict_ok": true,
+        "reported": [
+          "confirmed_deadlock"
+        ],
+        "status": "killed",
+        "end_reason": "deadlock_kill",
+        "completes_ok": true,
+        "events": 11,
+        "lost": 0,
+        "wall_ms": 1023.25,
+        "latency_ms": 1.99715,
+        "confirmation_delay_ms": 1.811865,
+        "cycle_length": 2
+      },
+      {
+        "scenario": "lost-wakeup",
+        "rep": 0,
+        "verdict": "stall",
+        "expected_verdict": "stall",
+        "verdict_ok": true,
+        "reported": [
+          "stall"
+        ],
+        "status": "killed",
+        "end_reason": "stall_kill",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 2025.12,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lost-wakeup",
+        "rep": 1,
+        "verdict": "stall",
+        "expected_verdict": "stall",
+        "verdict_ok": true,
+        "reported": [
+          "stall"
+        ],
+        "status": "killed",
+        "end_reason": "stall_kill",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 2051.6,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lost-wakeup",
+        "rep": 2,
+        "verdict": "stall",
+        "expected_verdict": "stall",
+        "verdict_ok": true,
+        "reported": [
+          "stall"
+        ],
+        "status": "killed",
+        "end_reason": "stall_kill",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 2026.11,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lost-wakeup",
+        "rep": 3,
+        "verdict": "stall",
+        "expected_verdict": "stall",
+        "verdict_ok": true,
+        "reported": [
+          "stall"
+        ],
+        "status": "killed",
+        "end_reason": "stall_kill",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 2032.44,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "lost-wakeup",
+        "rep": 4,
+        "verdict": "stall",
+        "expected_verdict": "stall",
+        "verdict_ok": true,
+        "reported": [
+          "stall"
+        ],
+        "status": "killed",
+        "end_reason": "stall_kill",
+        "completes_ok": true,
+        "events": 21,
+        "lost": 0,
+        "wall_ms": 2034.42,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "stress",
+        "rep": 0,
+        "verdict": "excessive_contention",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [
+          "excessive_contention"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 615330,
+        "lost": 0,
+        "wall_ms": 5530.47,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "stress",
+        "rep": 1,
+        "verdict": "excessive_contention",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [
+          "excessive_contention"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 615330,
+        "lost": 0,
+        "wall_ms": 4876.62,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "stress",
+        "rep": 2,
+        "verdict": "excessive_contention",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [
+          "excessive_contention"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 615330,
+        "lost": 0,
+        "wall_ms": 4932.74,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "stress",
+        "rep": 3,
+        "verdict": "excessive_contention",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [
+          "excessive_contention"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 615330,
+        "lost": 0,
+        "wall_ms": 4903.47,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      },
+      {
+        "scenario": "stress",
+        "rep": 4,
+        "verdict": "excessive_contention",
+        "expected_verdict": "no_issue",
+        "verdict_ok": true,
+        "reported": [
+          "excessive_contention"
+        ],
+        "status": "completed",
+        "end_reason": "exit",
+        "completes_ok": true,
+        "events": 615330,
+        "lost": 0,
+        "wall_ms": 4938.43,
+        "latency_ms": null,
+        "confirmation_delay_ms": null,
+        "cycle_length": null
+      }
+    ],
+    "verdict_accuracy": 1.0,
+    "completion_accuracy": 1.0,
+    "per_class": {
+      "confirmed_deadlock": {
+        "tp": 25,
+        "fp": 0,
+        "fn": 0,
+        "tn": 65,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "potential_deadlock": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0,
+        "tn": 55,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "excessive_contention": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0,
+        "tn": 5,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "api_misuse": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0,
+        "tn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "stall": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0,
+        "tn": 10,
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    "latency_ms": {
+      "n": 25,
+      "min": 1.361787,
+      "median": 2.195921,
+      "p95": 2.9411366,
+      "max": 3.283032
+    },
+    "confirmation_delay_ms": {
+      "n": 25,
+      "median": 1.985813,
+      "max": 2.712352
+    },
+    "lost_events_total": 0
+  },
+  "cross_run": {
+    "single_run_verdicts": [
+      "no_issue",
+      "no_issue"
+    ],
+    "merged_cycle_found": true,
+    "cross_session": true
+  },
+  "overhead": {
+    "iterations_per_thread": 20000,
+    "rows": [
+      {
+        "threads": 1,
+        "baseline": {
+          "median_ms": 6.35,
+          "min_ms": 6.196,
+          "max_ms": 6.495,
+          "events": null,
+          "lost": []
+        },
+        "passive": {
+          "median_ms": 6.321,
+          "min_ms": 6.238,
+          "max_ms": 6.504,
+          "events": null,
+          "lost": [],
+          "overhead_x": 0.9954330708661417
+        },
+        "trace": {
+          "median_ms": 11.993,
+          "min_ms": 8.442,
+          "max_ms": 12.876,
+          "events": 76928,
+          "lost": [],
+          "overhead_x": 1.8886614173228349
+        },
+        "live": {
+          "median_ms": 46.301,
+          "min_ms": 22.804,
+          "max_ms": 56.26,
+          "events": 76923,
+          "lost": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "backend_events_per_s": 117355.48537690513,
+          "overhead_x": 7.291496062992127
+        }
+      },
+      {
+        "threads": 2,
+        "baseline": {
+          "median_ms": 15.45,
+          "min_ms": 14.579,
+          "max_ms": 18.501,
+          "events": null,
+          "lost": []
+        },
+        "passive": {
+          "median_ms": 18.148,
+          "min_ms": 15.678,
+          "max_ms": 19.409,
+          "events": null,
+          "lost": [],
+          "overhead_x": 1.1746278317152103
+        },
+        "trace": {
+          "median_ms": 42.382,
+          "min_ms": 41.029,
+          "max_ms": 43.433,
+          "events": 153897,
+          "lost": [],
+          "overhead_x": 2.743171521035599
+        },
+        "live": {
+          "median_ms": 623.386,
+          "min_ms": 540.884,
+          "max_ms": 730.03,
+          "events": 153876,
+          "lost": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "backend_events_per_s": 124341.2280914402,
+          "overhead_x": 40.34860841423948
+        }
+      },
+      {
+        "threads": 4,
+        "baseline": {
+          "median_ms": 43.675,
+          "min_ms": 40.54,
+          "max_ms": 47.789,
+          "events": null,
+          "lost": []
+        },
+        "passive": {
+          "median_ms": 41.924,
+          "min_ms": 39.468,
+          "max_ms": 55.589,
+          "events": null,
+          "lost": [],
+          "overhead_x": 0.9599084144247282
+        },
+        "trace": {
+          "median_ms": 84.578,
+          "min_ms": 79.097,
+          "max_ms": 88.825,
+          "events": 307514,
+          "lost": [],
+          "overhead_x": 1.9365311963365772
+        },
+        "live": {
+          "median_ms": 1894.572,
+          "min_ms": 1813.846,
+          "max_ms": 2421.452,
+          "events": 307476,
+          "lost": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "backend_events_per_s": 128852.1416268905,
+          "overhead_x": 43.37886662850601
+        }
+      },
+      {
+        "threads": 8,
+        "baseline": {
+          "median_ms": 96.636,
+          "min_ms": 91.889,
+          "max_ms": 102.997,
+          "events": null,
+          "lost": []
+        },
+        "passive": {
+          "median_ms": 101.286,
+          "min_ms": 96.833,
+          "max_ms": 106.032,
+          "events": null,
+          "lost": [],
+          "overhead_x": 1.0481187135229109
+        },
+        "trace": {
+          "median_ms": 185.083,
+          "min_ms": 179.52,
+          "max_ms": 198.352,
+          "events": 615405,
+          "lost": [],
+          "overhead_x": 1.915259323647502
+        },
+        "live": {
+          "median_ms": 5383.661,
+          "min_ms": 4548.407,
+          "max_ms": 5474.085,
+          "events": 615330,
+          "lost": [
+            0,
+            3,
+            7,
+            0,
+            0
+          ],
+          "backend_events_per_s": 103723.28859026462,
+          "overhead_x": 55.710718572788615
+        }
+      }
+    ]
+  },
+  "loss": {
+    "runs": [
+      {
+        "ring": 1024,
+        "block_us": 0,
+        "events": 13060,
+        "lost": 602270,
+        "verdict": "inconclusive"
+      },
+      {
+        "ring": 4096,
+        "block_us": 0,
+        "events": 14968,
+        "lost": 600362,
+        "verdict": "inconclusive"
+      },
+      {
+        "ring": 65536,
+        "block_us": 0,
+        "events": 80114,
+        "lost": 535216,
+        "verdict": "inconclusive"
+      },
+      {
+        "ring": 65536,
+        "block_us": 2000,
+        "events": 600090,
+        "lost": 15240,
+        "verdict": "inconclusive"
+      },
+      {
+        "ring": 65536,
+        "block_us": 100000,
+        "events": 615330,
+        "lost": 0,
+        "verdict": "excessive_contention"
+      }
+    ]
+  },
+  "tools": {
+    "tsan": [
+      {
+        "scenario": "bank-deadlock",
+        "lock_order_inversion": false,
+        "data_race": false,
+        "hung_until_watchdog": true,
+        "seconds": 4.08
+      },
+      {
+        "scenario": "bank-ordered",
+        "lock_order_inversion": false,
+        "data_race": false,
+        "hung_until_watchdog": false,
+        "seconds": 0.24
+      },
+      {
+        "scenario": "lock-order-both",
+        "lock_order_inversion": true,
+        "data_race": false,
+        "hung_until_watchdog": false,
+        "seconds": 0.29
+      },
+      {
+        "scenario": "lock-order-ab",
+        "lock_order_inversion": false,
+        "data_race": false,
+        "hung_until_watchdog": false,
+        "seconds": 0.03
+      },
+      {
+        "scenario": "philosophers",
+        "lock_order_inversion": false,
+        "data_race": false,
+        "hung_until_watchdog": true,
+        "seconds": 4.14
+      },
+      {
+        "scenario": "philosophers-fixed",
+        "lock_order_inversion": false,
+        "data_race": false,
+        "hung_until_watchdog": false,
+        "seconds": 0.21
+      },
+      {
+        "scenario": "join-deadlock",
+        "lock_order_inversion": false,
+        "data_race": false,
+        "hung_until_watchdog": true,
+        "seconds": 4.13
+      },
+      {
+        "scenario": "lost-wakeup",
+        "lock_order_inversion": false,
+        "data_race": false,
+        "hung_until_watchdog": true,
+        "seconds": 4.08
+      },
+      {
+        "scenario": "healthy",
+        "lock_order_inversion": false,
+        "data_race": false,
+        "hung_until_watchdog": false,
+        "seconds": 0.1
+      },
+      {
+        "scenario": "contention",
+        "lock_order_inversion": false,
+        "data_race": false,
+        "hung_until_watchdog": false,
+        "seconds": 0.32
+      },
+      {
+        "scenario": "misuse",
+        "lock_order_inversion": false,
+        "data_race": false,
+        "hung_until_watchdog": false,
+        "seconds": 0.49
+      }
+    ],
+    "helgrind": [
+      {
+        "scenario": "bank-deadlock",
+        "lock_order": false,
+        "possible_data_race": false,
+        "api_misuse": false,
+        "errors": 2,
+        "hung_until_watchdog": true,
+        "seconds": 8.6
+      },
+      {
+        "scenario": "bank-ordered",
+        "lock_order": false,
+        "possible_data_race": false,
+        "api_misuse": false,
+        "errors": 0,
+        "hung_until_watchdog": false,
+        "seconds": 0.84
+      },
+      {
+        "scenario": "lock-order-both",
+        "lock_order": true,
+        "possible_data_race": false,
+        "api_misuse": false,
+        "errors": 1,
+        "hung_until_watchdog": false,
+        "seconds": 0.73
+      },
+      {
+        "scenario": "lock-order-ab",
+        "lock_order": false,
+        "possible_data_race": false,
+        "api_misuse": false,
+        "errors": 0,
+        "hung_until_watchdog": false,
+        "seconds": 0.68
+      },
+      {
+        "scenario": "philosophers",
+        "lock_order": false,
+        "possible_data_race": false,
+        "api_misuse": false,
+        "errors": 5,
+        "hung_until_watchdog": true,
+        "seconds": 8.67
+      },
+      {
+        "scenario": "philosophers-fixed",
+        "lock_order": false,
+        "possible_data_race": false,
+        "api_misuse": false,
+        "errors": 0,
+        "hung_until_watchdog": false,
+        "seconds": 0.94
+      },
+      {
+        "scenario": "join-deadlock",
+        "lock_order": false,
+        "possible_data_race": false,
+        "api_misuse": false,
+        "errors": 1,
+        "hung_until_watchdog": true,
+        "seconds": 8.61
+      },
+      {
+        "scenario": "lost-wakeup",
+        "lock_order": false,
+        "possible_data_race": false,
+        "api_misuse": false,
+        "errors": 0,
+        "hung_until_watchdog": true,
+        "seconds": 8.64
+      },
+      {
+        "scenario": "healthy",
+        "lock_order": false,
+        "possible_data_race": false,
+        "api_misuse": false,
+        "errors": 0,
+        "hung_until_watchdog": false,
+        "seconds": 0.75
+      },
+      {
+        "scenario": "contention",
+        "lock_order": false,
+        "possible_data_race": false,
+        "api_misuse": false,
+        "errors": 0,
+        "hung_until_watchdog": false,
+        "seconds": 1.04
+      },
+      {
+        "scenario": "misuse",
+        "lock_order": false,
+        "possible_data_race": false,
+        "api_misuse": true,
+        "errors": 13,
+        "hung_until_watchdog": false,
+        "seconds": 0.92
+      }
+    ],
+    "helgrind_available": true,
+    "valgrind_version": "valgrind-3.26.0",
+    "measured_at": "2026-10-14 05:58:43 UTC"
+  }
+}
