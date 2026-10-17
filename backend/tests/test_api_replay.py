@@ -162,6 +162,81 @@ def test_compare_and_cross_run_lock_order(client):
     assert "does not prove" in cmp["disclaimer"]
 
 
+def rwlock_sem_trace() -> Trace:
+    """Two rwlocks taken in opposite orders (writer blocked by two readers) plus a semaphore wait."""
+    RW1, RW2, S = 0x5000, 0x6000, 0x7000
+    t = Trace()
+    t.start(100, 0)
+    t.start(101, 1, "lookup-1")
+    t.start(102, 2, "lookup-2")
+    t.start(103, 3, "rebalancer")
+    t.ev(100, E.RWLOCK_INIT, obj=RW1)
+    t.ev(100, E.LOCK_NAME, obj=RW1, text="routing_table")
+    t.sem_init(100, S, 0)
+    t.ev(100, E.LOCK_NAME, obj=S, text="items")
+    t.rdlock(101, RW1)
+    t.rdlock(102, RW1)
+    t.rdlock(103, RW2)
+    t.rw_request(101, RW2, "w")
+    t.rw_request(103, RW1, "w")
+    t.sem_wait_begin(102, S)
+    t.heartbeat()
+    return t
+
+
+def test_rwlock_and_semaphore_import_replay_and_events(client):
+    trace = rwlock_sem_trace()
+    sid = import_trace(client, trace)
+    s = client.get(f"/api/sessions/{sid}").json()
+    assert s["verdict"] == "confirmed_deadlock"
+    (f,) = [f for f in client.get(f"/api/sessions/{sid}/findings").json() if f["kind"] == "deadlock"]
+    assert f["threads"] == [1, 3] and {e["kind"] for e in f["cycle"]["edges"]} == {"rwlock"}
+    ev = client.get(f"/api/sessions/{sid}/events", params={"types": "RW_REQUEST,SEM_WAIT_BEGIN"}).json()
+    descs = [e["description"] for e in ev["events"]]
+    assert "rebalancer requests routing_table for writing" in descs
+    assert any(d.startswith("lookup-2 waits on semaphore items") for d in descs)
+    (wr,) = [e for e in ev["events"] if e["type"] == "RW_REQUEST" and e["metadata"]["rw_mode"] == "w"
+             and e["thread"] == 3]
+    assert wr["lock_label"] == "routing_table" and wr["metadata"]["rwlock_kind"] == "rwlock"
+    state = client.get(f"/api/sessions/{sid}/state").json()
+    rw = {l["label"]: l for l in state["locks"]}["routing_table"]
+    assert rw["primitive"] == "rwlock" and [r["thread"] for r in rw["readers"]] == [1, 2]
+    assert state["semaphores"][0]["label"] == "items" and state["semaphores"][0]["waiters"] == [2]
+    assert {(e["from"], e["to"]) for e in state["wait_for"]["edges"]} == {(1, 3), (3, 1), (3, 2)}
+    tl = client.get(f"/api/sessions/{sid}/timeline").json()
+    states = {lane["label"]: lane["segments"][-1][2] for lane in tl["lanes"] if lane["segments"]}
+    assert states["lookup-2"] == "waiting_sem" and states["rebalancer"] == "blocked_lock"
+    # replay at every event equals incremental analysis (DFS path included)
+    from app.detection.engine import Analyzer
+    an = Analyzer()
+    ref = {}
+    for e in trace.items:
+        if e.oob:
+            an.apply_meta(e)
+        else:
+            an.apply(e)
+        ref[an.seq] = an.snapshot()
+    for seq, expect in ref.items():
+        got = client.get(f"/api/sessions/{sid}/replay", params={"seq": seq}).json()
+        assert got["wait_for"] == expect["wait_for"], seq
+        assert got["semaphores"] == expect["semaphores"], seq
+
+
+def test_cross_run_read_only_cycle_is_filtered(client):
+    RW1, RW2 = 0x5000, 0x6000
+    runs = []
+    for first, second in ((RW1, RW2), (RW2, RW1)):
+        t = Trace()
+        t.start(100, 0)
+        t.ev(100, E.LOCK_NAME, obj=RW1, text="cfg")
+        t.ev(100, E.LOCK_NAME, obj=RW2, text="routes")
+        t.rdlock(100, first); t.rdlock(100, second); t.rw_unlock(100, second); t.rw_unlock(100, first)
+        runs.append(import_trace(client, t))
+    merged = client.get("/api/analysis/lock-order", params={"sessions": ",".join(runs)}).json()
+    (cyc,) = merged["cycles"]
+    assert cyc["cross_session"] and "shared-mode" in cyc["filter_reason"]
+
+
 def test_timeline_and_settings(client):
     sid = import_trace(client, deadlock_trace())
     tl = client.get(f"/api/sessions/{sid}/timeline").json()

@@ -85,6 +85,43 @@ class Trace:
     def unlock(self, tid: int, m: int, kind: int = NORMAL) -> None:
         self.ev(tid, E.LOCK_RELEASE, obj=m, extra=kind)
 
+    # ---- read-write locks (extra = mode | kind << 8, as TL_RW_EXTRA)
+    @staticmethod
+    def rw_extra(mode: str, kind: int = 0) -> int:
+        return (1 if mode == "w" else 0) | (kind << 8)
+
+    def rw_request(self, tid: int, rw: int, mode: str, kind: int = 0, timed: bool = False) -> None:
+        self.ev(tid, E.RW_REQUEST, obj=rw, extra=self.rw_extra(mode, kind), flags=Flag.TIMED if timed else 0)
+
+    def rw_acquired(self, tid: int, rw: int, mode: str, kind: int = 0, wait: int = 0, timed: bool = False,
+                    try_: bool = False) -> None:
+        flags = (Flag.TIMED if timed else 0) | (Flag.TRY if try_ else 0)
+        self.ev(tid, E.RW_ACQUIRED, obj=rw, aux=wait, extra=self.rw_extra(mode, kind), flags=flags)
+
+    def rdlock(self, tid: int, rw: int, kind: int = 0) -> None:
+        self.rw_request(tid, rw, "r", kind)
+        self.rw_acquired(tid, rw, "r", kind)
+
+    def wrlock(self, tid: int, rw: int, kind: int = 0) -> None:
+        self.rw_request(tid, rw, "w", kind)
+        self.rw_acquired(tid, rw, "w", kind)
+
+    def rw_unlock(self, tid: int, rw: int, mode: str = "r", kind: int = 0) -> None:
+        self.ev(tid, E.RW_RELEASE, obj=rw, extra=self.rw_extra(mode, kind))
+
+    # ---- semaphores
+    def sem_init(self, tid: int, s: int, value: int, pshared: bool = False) -> None:
+        self.ev(tid, E.SEM_INIT, obj=s, aux=value, extra=1 if pshared else 0)
+
+    def sem_wait_begin(self, tid: int, s: int, timed: bool = False) -> None:
+        self.ev(tid, E.SEM_WAIT_BEGIN, obj=s, flags=Flag.TIMED if timed else 0)
+
+    def sem_wait_end(self, tid: int, s: int, result: int = 0, try_: bool = False) -> None:
+        self.ev(tid, E.SEM_WAIT_END, obj=s, result=result, flags=Flag.TRY if try_ else 0)
+
+    def sem_post(self, tid: int, s: int) -> None:
+        self.ev(tid, E.SEM_POST, obj=s)
+
 
 def run(trace: Trace, cfg: AnalysisConfig | None = None, finalize: bool = False) -> Analyzer:
     an = Analyzer(cfg or AnalysisConfig())
