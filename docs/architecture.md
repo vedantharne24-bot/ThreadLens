@@ -72,16 +72,22 @@ sequenceDiagram
   `std::thread` and `std::condition_variable` are covered because libstdc++
   calls the same pthread functions.
 * **Intercepted functions.** mutex init/destroy/lock/trylock/timedlock/
-  clocklock/unlock; cond wait/timedwait/clockwait/signal/broadcast; thread
-  create/join/detach/cancel/exit/setname; barrier wait. Optional annotations:
-  `tl_name_lock()`, `tl_mark()` (`threadlens.h`, resolved at runtime with
+  clocklock/unlock; rwlock init/destroy/rdlock/wrlock/tryrdlock/trywrlock/
+  timedrdlock/timedwrlock/clockrdlock/clockwrlock/unlock; cond
+  wait/timedwait/clockwait/signal/broadcast; semaphore init/destroy/wait/
+  trywait/timedwait/clockwait/post; thread create/join/detach/cancel/exit/
+  setname; barrier wait. Optional annotations: `tl_name_lock()` (mutexes,
+  rwlocks and semaphores), `tl_mark()` (`threadlens.h`, resolved at runtime with
   `dlsym(RTLD_DEFAULT)` so un-instrumented runs still work).
 * **Ordering rule** (the property the analysis relies on):
-  `LOCK_REQUEST` before the real lock, `LOCK_ACQUIRED` after it returns,
-  `LOCK_RELEASE` **before** the real unlock, `COND_WAIT_BEGIN` before
-  `pthread_cond_wait` (which releases the mutex inside) and `COND_WAIT_END`
-  after it returns (mutex re-acquired). Hence, for every mutex, a release always
-  has a smaller sequence number than the next acquisition by another thread.
+  `LOCK_REQUEST` / `RW_REQUEST` before the real lock, `LOCK_ACQUIRED` /
+  `RW_ACQUIRED` after it returns, `LOCK_RELEASE` / `RW_RELEASE` **before** the
+  real unlock, `COND_WAIT_BEGIN` before `pthread_cond_wait` (which releases the
+  mutex inside) and `COND_WAIT_END` after it returns (mutex re-acquired),
+  `SEM_POST` **before** the real `sem_post` and `SEM_WAIT_END` after `sem_wait`
+  returns. Hence, for every mutex and rwlock, a release always has a smaller
+  sequence number than the next conflicting acquisition by another thread, and
+  every post precedes the wait it lets through.
 * **Ring buffer.** Dmitry Vyukov's bounded MPMC queue used as MPSC: a producer
   claims a slot with one compare-and-swap on the tail; *the slot position is the
   event's sequence number*, so sequence numbers form a single total order with
@@ -102,8 +108,10 @@ sequenceDiagram
   the collector; the `THREADLENS_*` variables are removed so exec'd children are
   not monitored.
 * **glibc cross-check.** Each `LOCK_REQUEST` carries the owner TID stored by
-  glibc inside the mutex (`__data.__owner`), an independent view used to
-  corroborate the tracked ownership.
+  glibc inside the mutex (`__data.__owner`), and each `RW_REQUEST` the writer
+  TID stored in the rwlock (`__data.__cur_writer`): independent views used to
+  corroborate the tracked ownership. glibc does not record read holders, so
+  reader sets come only from observed events.
 
 ## Backend
 
@@ -112,8 +120,8 @@ sequenceDiagram
 | `models/wire.py` | struct layout, `StreamDecoder` (validates magic, version, type) |
 | `models/events.py` | Pydantic public schema (`EventOut`), strict import schema (`EventIn`), request models |
 | `detection/ingest.py` | `SequenceGuard`: drops duplicates, restores order within a window, declares gaps |
-| `detection/model.py` | `ThreadInfo`, `LockInfo`, `CondInfo`, `Wait`, `WaitEdge`, `Coverage` |
-| `detection/graphs.py` | functional-graph cycle walk, lock-order graph with BFS cycle search, Tarjan SCC |
+| `detection/model.py` | `ThreadInfo`, `LockInfo` (mutex or rwlock, with `ReadHold`s), `CondInfo`, `SemInfo`, `Wait`, `WaitEdge`, `Coverage` |
+| `detection/graphs.py` | functional-graph cycle walk, DFS / SCC cycle search for multi-edge (rwlock) states, lock-order graph with BFS cycle search and modes, Tarjan SCC |
 | `detection/engine.py` | `Analyzer`: event handlers, classification, evidence, snapshot, verdict |
 | `diagnostics/findings.py` | `Finding`, `Evidence`, classification vocabulary, remedies |
 | `services/process_manager.py` | executable/argument validation, spawn, limits, timeout, kill |

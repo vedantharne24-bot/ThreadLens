@@ -17,7 +17,7 @@ port 5173).
 
 * Scroll the landing page: *"See who waits for whom — and the evidence that
   proves it."*
-* Point at the chip **"backend online · 18 real test programs built"**: the
+* Point at the chip **"backend online · 23 real test programs built"**: the
   page is talking to the real backend.
 * Scroll through **"Seven events. One circular wait."** — say clearly that this
   story is an *illustration*; everything after this point is real data.
@@ -75,12 +75,20 @@ port 5173).
 * Run **Lost wake-up**: verdict *Stall*, no lock cycle; the explanation points to
   a signal sent before the wait began.
 * Run **Hot lock contention**: *Contention*, explicitly not a deadlock.
+* Run **Reader/writer deadlock**: *Confirmed deadlock*. In the Lock Graph the
+  rebalancer "waits to write" `routing_table`, which two lookups read — a writer
+  waits for every reader, so its node has two outgoing edges and ThreadLens
+  searches the graph depth-first.
+* Run **Semaphore bounded buffer stall** (or **Run original + fix** on it): verdict
+  *Stall*, not deadlock. The `slots` semaphore is drawn with a waiter but no
+  holder; the explanation walks consumer → producer → "waiting on semaphore
+  slots", and says why a semaphore cannot close a wait-for cycle.
 
 ## 8. Engineering credibility (30 s)
 
-* `docs/results.md`: 90 evaluation runs, precision/recall per class, measured
+* `docs/results.md`: 115 evaluation runs, precision/recall per class, measured
   latency, overhead table, event-loss table, comparison with ThreadSanitizer.
-* `pytest`: 88 backend tests including all scenarios through the live API.
+* `pytest`: 124 backend tests including 20 scenarios through the live API.
 
 ### If something goes wrong
 

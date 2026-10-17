@@ -68,6 +68,36 @@ With several instances (e.g. a semaphore with count 3), another instance may be
 released by a thread outside the cycle. Mutexes are single-instance, so a cycle
 of blocking waits is a deadlock.
 
+**10a. How are read-write locks modelled?** An rwlock has one writer or any
+number of readers. A thread waiting to *write* has a wait-for edge to every
+current reader (and to the writer); a waiting *reader* has an edge to the
+writer only. A writer needs ALL readers to release (an AND-wait), so a cycle
+through any one of its edges is still a deadlock — but the graph is no longer
+functional (out-degree > 1), so while an rwlock wait exists the engine searches
+it depth-first instead of walking successors; snapshots use Tarjan SCCs. A
+thread that read-locks and then write-locks the same rwlock waits for itself:
+a self-loop, reported as a read-to-write upgrade self-deadlock
+(`rwlock-upgrade`). Two rwlocks taken in opposite orders deadlock exactly like
+mutexes (`rwlock-deadlock`; its rebalancer has two outgoing edges at detection
+time).
+
+**10b. Why is a semaphore hang a stall and not a deadlock?** A semaphore has no
+owner: any thread may post it, so "A waits for B" cannot be stated from the
+operations alone, and no wait-for edge is drawn. In `sem-stall` the producer
+waits on `slots` while holding `buffer.mu`, and the consumer — the only thread
+that would post `slots` — waits for `buffer.mu`. The wait-for graph has
+consumer → producer and nothing back, so ThreadLens reports a *stall* (every
+thread blocked, no progress) and explains the chain, instead of claiming a
+deadlock it cannot prove. The count it shows (initial value + posts − waits = 0)
+is the evidence that no post is pending.
+
+**10c. Do read locks create lock-order cycles?** rdlock/wrlock acquisitions add
+lock-order edges with their modes; try variants add none. A cycle whose link at
+some rwlock is read-requested and read-held on both sides is *filtered*: two
+readers never block each other on glibc's default (reader-preferring) rwlock.
+Read-held locks are also not accepted as gate locks, because two readers of
+the "gate" run concurrently.
+
 **11. How does ThreadLens detect cycles efficiently?**
 Each blocked thread waits for exactly one thing, so the wait-for graph has
 out-degree ≤ 1 (a functional graph). Following successors from the thread that
@@ -189,7 +219,7 @@ database is written by a separate thread.
 
 **31. How accurate is it?** Quote `results.md`: verdict accuracy and
 precision/recall per class over the evaluation runs, zero false confirmed
-deadlocks in those runs. Stress the scope: 15+ controlled scenarios, not a
+deadlocks in those runs. Stress the scope: 23 controlled scenarios, not a
 benchmark suite of real applications.
 
 **32. What is the overhead?** Quote the overhead table. Passive interposition is
@@ -207,10 +237,10 @@ lock-order graph is also built from completed acquisitions); its only messages
 for the hung programs were "Exiting thread still holds 1 lock" when the
 watchdog killed them. ThreadLens confirms the hang from the wait-for graph.
 
-**34. What can ThreadLens not detect?** rwlock/semaphore/spinlock deadlocks,
-lock-free bugs, data races, deadlocks in un-executed paths (prediction only
-covers observed orders), the cause of condition-variable hangs (reported as
-stalls).
+**34. What can ThreadLens not detect?** spinlock deadlocks, lock-free bugs,
+data races, deadlocks in un-executed paths (prediction only covers observed
+orders), the cause of condition-variable and semaphore hangs (reported as
+stalls, because those primitives have no owner).
 
 **35. Is a successful corrected run a proof of correctness?** No. It shows that
 the tested scenario did not reproduce the problem in that execution; other
@@ -225,19 +255,21 @@ original-vs-corrected comparison, with measured evaluation.
 
 ## E. Quick numbers to remember (from `results.md`)
 
-* Evaluation runs: **90** (18 scenarios × 5); verdict accuracy **100 %**.
-* Confirmed-deadlock precision / recall: **100 % / 100 %** (25 TP, 0 FP, 0 FN, 65 TN).
-* Median end-to-end detection latency: **2.2 ms** (p95 2.9 ms, max 3.3 ms); in-trace
-  confirmation delay median 2.0 ms.
-* Overhead (8 threads, lock-bound stress): passive **1.05×**, trace **1.9×**, live **56×**
-  (lossless, bounded by ~100 k events/s backend ingest). 1 thread: live 7.3×.
+* Evaluation runs: **115** (23 scenarios × 5); verdict accuracy **100 %**.
+* Confirmed-deadlock precision / recall: **100 % / 100 %** (35 TP, 0 FP, 0 FN, 80 TN),
+  including the rwlock opposite-order and read-to-write upgrade deadlocks.
+* Median end-to-end detection latency: **2.4 ms** (p95 5.1 ms, max 5.4 ms); in-trace
+  confirmation delay median 2.2 ms.
+* Overhead (8 threads, lock-bound stress): passive **1.06×**, trace **1.7×**, live **33×**
+  (lossless, bounded by ~210 k events/s backend ingest). 1 thread: live 4.7×.
 * Without back-pressure (`block_us=0`) the program is not slowed but ~87 % of stress events
   are lost and the verdict is correctly *inconclusive*.
-* Backend analysis rate: ~370 k events/s offline (decoder ~0.9 M records/s); live ingest
-  ~100–130 k events/s including SQLite.
-* ThreadSanitizer and Helgrind: both hung without a deadlock report on all 3 actual
-  deadlocks; both reported the single-run lock-order inversion; Helgrind flagged the misuse
-  program with 13 errors (its strength: API misuse and data races).
+* Backend analysis rate: ~460 k events/s offline (decoder ~1.2 M records/s, stress trace,
+  measured separately from `evaluate.py`); live ingest ~210–280 k events/s including SQLite.
+* ThreadSanitizer and Helgrind: both hung without a report on all 5 actual deadlocks they
+  were run on (incl. both rwlock deadlocks) and on both stalls; both reported the single-run
+  lock-order inversion; Helgrind flagged the misuse program with 13 errors (its strength:
+  API misuse and data races).
 
 **Viva tip:** if asked "why is live overhead so high on stress?", answer: by design the
 collector applies back-pressure so that no event is lost; the bottleneck is the Python

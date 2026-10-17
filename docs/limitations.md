@@ -6,7 +6,9 @@ Stated plainly, so that every claim made in the demo can be defended.
 
 | Not observed | Why | Consequence |
 |---|---|---|
-| `pthread_rwlock_*`, `pthread_spin_*`, POSIX semaphores (`sem_t`) | not intercepted in this version | a deadlock involving them is invisible (could appear as a stall if all threads end up in other waits) |
+| `pthread_spin_*` | not intercepted in this version | a deadlock involving a spinlock is invisible (the spinning thread looks busy, not blocked) |
+| `sem_open` / `sem_close` / `sem_unlink` (named semaphores) | creation is not intercepted | waits and posts on them **are** observed, but the initial count is unknown, so the count is not tracked and a wait without a matching post is not flagged |
+| Semaphores posted by another process (`pshared = 1`) | only one process is monitored | the count is not tracked; waits still count towards stall detection |
 | Locks built from atomics/futexes, lock-free code | no API call to intercept | invisible |
 | glibc-internal locks (stdio, malloc arenas, dynamic loader) | internal calls bypass the PLT | invisible (they very rarely participate in application deadlocks) |
 | Statically linked programs | `LD_PRELOAD` does not apply | collector never connects; the session reports this |
@@ -29,10 +31,28 @@ Stated plainly, so that every claim made in the demo can be defended.
 * **False negatives of prediction.** Only orders that occurred in the observed
   executions are known; an inversion on a path that never ran is missed. Merging
   several runs (cross-run analysis) reduces but does not remove this.
-* **Condition-variable hangs** cannot be attributed to a specific missing
-  signaller; they are reported as *stalls* with an inconclusive cause. Edges for
-  re-acquiring the mutex after a signal are *inferred* and only produce
-  *potential* findings.
+* **Condition-variable and semaphore hangs** cannot be attributed to a specific
+  missing signaller or poster: neither primitive has an owner, so waiting on one
+  adds no wait-for edge. They are reported as *stalls* with an inconclusive
+  cause, and the explanation shows any wait-for chain that ends at such a wait
+  (e.g. "consumer → producer, which holds `buffer.mu` and waits on semaphore
+  `slots`"). A deadlock that closes only through a semaphore — the classic
+  `sem_wait` inside the critical section — is therefore a *stall*, never a
+  *confirmed deadlock*. Edges for re-acquiring the mutex after a signal are
+  *inferred* and only produce *potential* findings.
+* **Read-write locks.** A writer waits for every current reader (an AND-wait),
+  so the wait-for graph is searched depth-first while an rwlock wait is
+  outstanding. glibc does not record which threads hold read locks, so reader
+  sets come only from observed events; a `pthread_rwlock_unlock` by a thread
+  that holds nothing (undefined behaviour) makes every later cycle through
+  that lock *inconclusive*. On writer-preferring rwlocks
+  (`PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP`) a reader queues behind
+  waiting writers inside glibc; those edges are *inferred* and only produce
+  *potential* findings. Read-to-write upgrades are reported as self-deadlocks.
+* **Lock-order cycles through read locks.** A link where a lock is only ever
+  held and requested for reading cannot block on a reader-preferring rwlock
+  (glibc's default), so such cycles are *filtered* ("shared-mode cycle"). Locks
+  held for reading never count as gate locks.
 * **Stall detection is time-based** (default 1 s of silence with every thread in
   an untimed wait). A thread spinning in user code without pthread calls is not
   "waiting", so it prevents a stall report rather than causing a false one.
@@ -42,8 +62,12 @@ Stated plainly, so that every claim made in the demo can be defended.
   locking: occasional benign mismatches are expected and are not used to decide
   anything.
 * **glibc/x86-64 specific details**: mutex kind and owner come from glibc's
-  `pthread_mutex_t` layout; the versioned condition-variable symbols are resolved
-  for x86-64 (`GLIBC_2.3.2`).
+  `pthread_mutex_t` layout, the rwlock preference kind and current writer from
+  `pthread_rwlock_t.__data.__flags` / `__cur_writer`; the versioned
+  condition-variable symbols are resolved for x86-64 (`GLIBC_2.3.2`). The
+  semaphore count shown in events is read with `sem_getvalue` just before the
+  call and is informational only; the analysis uses its own count
+  (initial value + posts − successful waits).
 
 ## Collection limitations
 
@@ -79,8 +103,8 @@ other interleavings. For execution replay use `rr`.
 
 ## Future scope
 
-1. Intercept rwlocks, semaphores and spinlocks (shared ownership in the
-   wait-for graph).
+1. Intercept spinlocks and `sem_open`; model writer-preferring rwlock queues
+   from glibc's internal state instead of inferring them.
 2. eBPF/uprobe collector producing the same records (no restart, static
    binaries) for systems where root is available.
 3. Happens-before / sync-preserving filtering of lock-order cycles (SPD-style)

@@ -7,18 +7,20 @@
 Deadlocks and lock-ordering bugs in multithreaded programs are intermittent, leave a
 process silently hung, and are hard to explain with general-purpose debuggers. ThreadLens
 is a runtime concurrency debugger for Linux POSIX-thread programs. A preloaded collector
-(`LD_PRELOAD`) records every mutex request, acquisition and release, condition-variable
-wait, and thread lifecycle event of an unmodified C/C++ program into a lock-free ring buffer
+(`LD_PRELOAD`) records every mutex and read-write lock request, acquisition and release,
+condition-variable and semaphore wait, and thread lifecycle event of an unmodified C/C++ program into a lock-free ring buffer
 whose slot indexes form a single total order; a flusher streams the records over a
 Unix-domain socket to a Python analysis engine. The engine maintains thread states and lock
 ownership, a current wait-for graph and a historical lock-order graph, and classifies
 problems conservatively as confirmed deadlocks, potential deadlocks, contention, stalls,
 API misuse or inconclusive results, keeping the ordered events and source lines that support
 each finding. A React dashboard visualizes the state live in 2D and 3D, replays the analysis
-event by event, and compares an original program with its fix. On 18 real scenarios
-(90 evaluation runs) every session verdict matched the ground truth, confirmed-deadlock
-precision and recall were 100 %, and deadlocks were confirmed a median 2.2 ms after the
-cycle-forming event. The contribution is an integrated, evidence-linked, time-aware workflow
+event by event, and compares an original program with its fix. Read-write locks (a writer
+waits for every reader, so the wait-for graph is searched depth-first) and POSIX semaphores
+(no owner, so their hangs are reported as stalls) are supported alongside mutexes and
+condition variables. On 23 real scenarios (115 evaluation runs) every session verdict
+matched the ground truth, confirmed-deadlock precision and recall were 100 %, and deadlocks
+were confirmed a median 2.4 ms after the cycle-forming event. The contribution is an integrated, evidence-linked, time-aware workflow
 rather than a new detection algorithm.
 
 ## 2. Problem statement
@@ -36,7 +38,7 @@ Objectives O1–O8 (detection, no false confirmations, potential deadlocks, late
 interference, visible loss, explanations, replay) are defined with metrics in
 [blueprint.md](blueprint.md#2-problem-statement-and-measurable-objectives); scope, supported
 primitives and functional/non-functional requirements are in [requirements.md](requirements.md).
-Out of scope: data races, kernel locks, rwlocks/semaphores/spinlocks, multi-process programs.
+Out of scope: data races, kernel locks, spinlocks, multi-process programs.
 
 ## 4. Literature review
 
@@ -53,20 +55,22 @@ Key distinctions: race detectors (Helgrind, DRD, TSan) and deadlock predictors r
 executions. None of them confirms an actual pthread deadlock from a live wait-for graph with
 ordered evidence, a stall classification, event replay and an original-vs-fix comparison in
 one tool. Measured on the same programs, ThreadSanitizer and Helgrind both hung without a
-deadlock report on all three actual deadlocks (both derive lock-order cycles from completed
-acquisitions, and the second acquisitions never complete); both reported the single-run
+deadlock report on all five actual deadlocks they were run on, including the two rwlock
+deadlocks (both derive lock-order cycles from completed acquisitions, and the second
+acquisitions never complete), and on the two stalls; both reported the single-run
 lock-order inversion, and Helgrind flagged the API-misuse program with 13 errors. ThreadLens
-confirmed all three hangs within milliseconds and reported the inversion as potential
-([results.md § E](results.md)).
+confirmed all five deadlocks within milliseconds, reported both stalls, and reported the
+inversion as potential ([results.md § E](results.md)).
 
 ## 6. Proposed system
 
-* **Collector** (`collector/src/collector.c`): wrappers for mutex, condition-variable,
-  thread and barrier functions; ordering rule (release before unlock, acquire after lock);
+* **Collector** (`collector/src/collector.c`): wrappers for mutex, read-write lock,
+  condition-variable, semaphore, thread and barrier functions; ordering rule (release before unlock, acquire after lock);
   Vyukov ring buffer; bounded back-pressure with counted loss; heartbeats proving delivery.
 * **Analysis engine** (`backend/app/detection/`): pure, deterministic state machine; wait-for
-  graph as a functional graph; lock-order graph with try-lock awareness, GoodLock filters and
-  cross-run merging; contention and stall detection; API-misuse findings.
+  graph as a functional graph (successor walk), switching to depth-first / SCC search while a
+  writer waits on several rwlock readers; lock-order graph with try-lock awareness, read/write
+  modes, GoodLock and shared-mode filters and cross-run merging; contention and stall detection; API-misuse findings.
 * **Backend** (`backend/app/`): FastAPI; supervised execution (validated ELF, no shell,
   `setsid`, `prlimit`, timeout, `killpg`); SQLite persistence; WebSocket streaming; replay,
   export, comparison.
@@ -110,8 +114,8 @@ three 0.180, @react-three/fiber 9.3, @react-three/drei 10.7, Cytoscape 3.33).
 
 ## 14. Test cases and expected outcomes
 
-See [testing.md](testing.md): 3 collector tests, 88 backend tests (including every scenario
-through the live API), 8 frontend tests, and the ground-truth table for all 18 scenarios.
+See [testing.md](testing.md): 3 collector tests, 124 backend tests (including 20 scenarios
+through the live API), 10 frontend tests, and the ground-truth table for all 23 scenarios.
 
 ## 15. Benchmarking methodology
 
@@ -122,23 +126,28 @@ See [testing.md § Evaluation methodology](testing.md#evaluation-methodology-scr
 From [results.md](results.md) (Intel Core Ultra 9 185H, 22 logical CPUs, WSL2 Ubuntu 26.04,
 kernel 6.18, glibc 2.43):
 
-* 90 runs, verdict = ground truth in 100 %; completion behaviour matched in 100 %.
-* Confirmed deadlock: 25 TP, 0 FP, 0 FN, 65 TN. Potential deadlock, contention and stall:
-  100 % precision/recall on their positive scenarios.
-* Detection latency (end-to-end, shared `CLOCK_MONOTONIC`): median 2.2 ms, p95 2.9 ms.
-* Overhead on a lock-bound stress program: interposition ≈ 1.0×, trace file ≈ 1.9–2.7×, live
-  lossless pipeline 7× (1 thread) to 56× (8 threads), bounded by ~100–130 k events/s backend
-  ingest. With no back-pressure the program is not slowed, ~87 % of events are lost and the
-  verdict is correctly *inconclusive*.
+* 115 runs (23 scenarios × 5), verdict = ground truth in 100 %; completion behaviour matched
+  in 100 %; no events lost outside the stress program.
+* Confirmed deadlock: 35 TP, 0 FP, 0 FN, 80 TN (including the rwlock opposite-order and
+  read-to-write upgrade deadlocks). Potential deadlock, contention and stall (now including
+  the semaphore bounded-buffer stall): 100 % precision/recall on their positive scenarios.
+* Detection latency (end-to-end, shared `CLOCK_MONOTONIC`): median 2.4 ms, p95 5.1 ms,
+  max 5.4 ms.
+* Overhead on a lock-bound stress program: interposition ≈ 1.0× (1.00–1.06×), trace file
+  ≈ 1.6–1.9×, live lossless pipeline 4.7× (1 thread) to 33–34× (4–8 threads), bounded by
+  ~210–280 k events/s backend ingest. With no back-pressure the program is not slowed, ~87 %
+  of events are lost (64 Ki-slot ring) and the verdict is correctly *inconclusive*.
 * Cross-run analysis found the lock_a/lock_b inversion that neither individual run contained.
-* ThreadSanitizer and Helgrind: no deadlock report on the three actual deadlocks (both hang);
-  both detect the single-run inversion; Helgrind also reports the misuse cases.
+* ThreadSanitizer and Helgrind: no deadlock report on the five actual deadlocks they were run
+  on, nor on the two stalls (both hang); both detect the single-run inversion; Helgrind also
+  reports the misuse cases.
 
 ## 17. Limitations and future scope
 
-See [limitations.md](limitations.md). Most important: unsupported primitives (rwlocks,
-semaphores, spinlocks, futex-based locks), potential deadlocks are unsound predictions,
-condition-variable hangs are reported as stalls with an inconclusive cause, back-pressure
+See [limitations.md](limitations.md). Most important: unsupported primitives (spinlocks,
+futex-based locks, `sem_open` creation), potential deadlocks are unsound predictions,
+condition-variable and semaphore hangs are reported as stalls with an inconclusive cause
+(neither primitive has an owner), back-pressure
 slows very lock-heavy programs, evaluation is on controlled scenarios on WSL2, and a user
 study was not performed.
 
@@ -160,7 +169,8 @@ See [demo-script.md](demo-script.md).
 
 ## 20. Viva questions and answers
 
-See [viva.md](viva.md) — 36 questions on processes, threads, mutexes, condition variables,
+See [viva.md](viva.md) — 39 questions on processes, threads, mutexes, read-write locks,
+semaphores, condition variables,
 deadlock theory, the implementation and the evaluation, plus the key numbers.
 
 ## References

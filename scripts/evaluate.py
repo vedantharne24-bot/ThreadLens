@@ -228,6 +228,9 @@ TSAN_CASES = [
     ("philosophers", "dining_philosophers", []), ("philosophers-fixed", "dining_philosophers", ["--fixed"]),
     ("join-deadlock", "join_deadlock", []), ("lost-wakeup", "lost_wakeup", []), ("healthy", "healthy", []),
     ("contention", "contention", ["8", "15", "2000"]), ("misuse", "misuse", []),
+    ("rwlock-deadlock", "rwlock_deadlock", []), ("rwlock-ordered", "rwlock_deadlock", ["--fixed"]),
+    ("rwlock-upgrade", "rwlock_deadlock", ["upgrade"]), ("sem-stall", "bounded_buffer_sem", []),
+    ("sem-ordered", "bounded_buffer_sem", ["--fixed"]),
 ]
 
 
@@ -315,7 +318,7 @@ def write_report(res: dict, path: Path) -> None:
     cd = a["confirmation_delay_ms"]
     L += ["", "## B. Deadlock detection latency", "",
           "End-to-end latency = backend `CLOCK_MONOTONIC` when the deadlock was confirmed − target `CLOCK_MONOTONIC` "
-          "timestamp of the cycle-forming LOCK_REQUEST (both clocks are the same kernel clock). It includes the "
+          "timestamp of the cycle-forming LOCK_REQUEST / RW_REQUEST (both clocks are the same kernel clock). It includes the "
           "collector ring, the flusher, the Unix socket, decoding and analysis.", "",
           f"| n | min | median | p95 | max |", "|---|---|---|---|---|",
           f"| {lat['n']} | {fmt(lat['min'])} ms | {fmt(lat['median'])} ms | {fmt(lat['p95'])} ms | {fmt(lat['max'])} ms |", "",
@@ -386,7 +389,8 @@ def write_report(res: dict, path: Path) -> None:
     L += ["", "Interpretation: TSan and Helgrind predict lock-order inversions from completed acquisitions (and find "
           "data races, which ThreadLens does not attempt); Helgrind also reports pthread API misuse well. A program "
           "that actually deadlocks simply hangs under them until a timeout; ThreadLens confirms the hang as a "
-          "wait-for cycle with evidence within milliseconds. The tools are complementary.", ""]
+          "wait-for cycle with evidence within milliseconds (for the condition-variable and semaphore hangs it "
+          "reports a stall with the blocked chain instead). The tools are complementary.", ""]
     path.write_text("\n".join(L), encoding="utf-8")
 
 
