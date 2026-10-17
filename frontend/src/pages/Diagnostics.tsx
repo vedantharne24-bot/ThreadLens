@@ -323,8 +323,15 @@ function CoveragePanel({ snap }: { snap: Snapshot }) {
       <Card>
         <CardHeader eyebrow="Scope" title="What is observed" />
         <div className="space-y-2 p-4 text-xs leading-relaxed text-fg-2">
-          <p>Observed: pthread mutexes (lock, trylock, timedlock, unlock, init, destroy), condition variables, thread create/join/detach/exit/cancel, barriers.</p>
-          <p className="text-fg-3">Not observed: rwlocks, spinlocks, semaphores, futex/atomic-based locks, glibc-internal locks, statically linked programs and child processes.</p>
+          <p>
+            Observed: pthread mutexes (lock, trylock, timedlock, unlock, init, destroy), read-write locks (read/write, try and timed variants; a
+            writer waits for every reader), condition variables, POSIX semaphores (wait, trywait, timedwait, post; no owner, so they only
+            contribute to stall detection), thread create/join/detach/exit/cancel, barriers.
+          </p>
+          <p className="text-fg-3">
+            Not observed: spinlocks, futex/atomic-based locks, sem_open/sem_close (named semaphores are tracked from their first wait/post),
+            glibc-internal locks, statically linked programs and child processes.
+          </p>
         </div>
       </Card>
     </div>

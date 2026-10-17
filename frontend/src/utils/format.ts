@@ -52,6 +52,7 @@ export const STATE_META: Record<ThreadState, { label: string; color: string; tw:
   running: { label: "Running", color: "var(--cyan)", tw: "text-cyan" },
   blocked_lock: { label: "Blocked on lock", color: "var(--warn)", tw: "text-warn" },
   waiting_cond: { label: "Waiting (condvar)", color: "var(--violet)", tw: "text-violet" },
+  waiting_sem: { label: "Waiting (semaphore)", color: "var(--violet)", tw: "text-violet" },
   blocked_join: { label: "Joining", color: "var(--info)", tw: "text-info" },
   barrier: { label: "At barrier", color: "var(--info)", tw: "text-info" },
   exited: { label: "Exited", color: "var(--fg-3)", tw: "text-fg-3" },
@@ -62,6 +63,7 @@ export const SEGMENT_COLORS: Record<string, string> = {
   holding: "var(--violet)",
   blocked_lock: "var(--warn)",
   waiting_cond: "color-mix(in oklab, var(--violet) 55%, var(--fg-3))",
+  waiting_sem: "color-mix(in oklab, var(--violet) 35%, var(--fg-3))",
   blocked_join: "var(--info)",
   barrier: "var(--info)",
 };
@@ -84,17 +86,19 @@ export const VERDICT_META: Record<Classification, { short: string; color: string
 
 export const TYPE_GROUPS: Record<string, string[]> = {
   Locks: ["LOCK_REQUEST", "LOCK_ACQUIRED", "LOCK_FAILED", "LOCK_RELEASE", "UNLOCK_FAILED", "MUTEX_INIT", "MUTEX_DESTROY"],
+  "RW locks": ["RW_REQUEST", "RW_ACQUIRED", "RW_FAILED", "RW_RELEASE", "RWLOCK_INIT", "RWLOCK_DESTROY"],
   "Cond vars": ["COND_WAIT_BEGIN", "COND_WAIT_END", "COND_SIGNAL", "COND_BROADCAST"],
+  Semaphores: ["SEM_WAIT_BEGIN", "SEM_WAIT_END", "SEM_POST", "SEM_POST_FAILED", "SEM_INIT", "SEM_DESTROY"],
   Threads: ["THREAD_CREATE", "THREAD_START", "THREAD_EXIT", "JOIN_BEGIN", "JOIN_END", "THREAD_DETACH", "CANCEL_REQUEST"],
   Other: ["BARRIER_WAIT_BEGIN", "BARRIER_WAIT_END", "THREAD_NAME", "LOCK_NAME", "USER_MARK", "PROCESS_START", "PROCESS_EXIT"],
 };
 
 export function typeColor(type: string): string {
-  if (type === "LOCK_REQUEST") return "var(--warn)";
-  if (type === "LOCK_ACQUIRED") return "var(--cyan)";
-  if (type === "LOCK_RELEASE") return "var(--fg-3)";
-  if (type === "LOCK_FAILED" || type === "UNLOCK_FAILED") return "var(--crit)";
-  if (type.startsWith("COND")) return "var(--violet)";
+  if (type === "LOCK_REQUEST" || type === "RW_REQUEST") return "var(--warn)";
+  if (type === "LOCK_ACQUIRED" || type === "RW_ACQUIRED") return "var(--cyan)";
+  if (type === "LOCK_RELEASE" || type === "RW_RELEASE") return "var(--fg-3)";
+  if (type === "LOCK_FAILED" || type === "UNLOCK_FAILED" || type === "RW_FAILED" || type === "SEM_POST_FAILED") return "var(--crit)";
+  if (type.startsWith("COND") || type.startsWith("SEM")) return "var(--violet)";
   if (type.startsWith("THREAD") || type.startsWith("JOIN") || type === "CANCEL_REQUEST") return "var(--info)";
   return "var(--fg-2)";
 }
@@ -105,6 +109,19 @@ export function threadMap(s: Snapshot | null): Map<number, ThreadView> {
 
 export function lockMap(s: Snapshot | null): Map<number, LockView> {
   return new Map((s?.locks ?? []).map((l) => [l.id, l]));
+}
+
+/** "read" / "write" for an rwlock mode, "" for a mutex. */
+export function modeWord(mode: string | null | undefined): string {
+  return mode === "r" ? "read" : mode === "w" ? "write" : "";
+}
+
+/** Every thread currently holding a lock: the owner (mutex) / writer, then the readers. */
+export function lockHolders(l: LockView): { thread: number; mode: "x" | "r" | "w"; count: number }[] {
+  const out: { thread: number; mode: "x" | "r" | "w"; count: number }[] = [];
+  if (l.owner !== null) out.push({ thread: l.owner, mode: l.primitive === "rwlock" ? "w" : "x", count: l.count });
+  for (const r of l.readers ?? []) out.push({ thread: r.thread, mode: "r", count: r.count });
+  return out;
 }
 
 export function shortPath(p: string | null | undefined): string {

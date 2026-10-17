@@ -83,10 +83,10 @@ interface Palette {
 function nodeColor(n: GNode, p: Palette): string {
   if (n.classes.includes("cycle")) return p.crit;
   if (n.classes.includes("potential")) return p.warn;
-  if (n.kind === "lock") return p.violet;
+  if (n.kind === "lock" || n.kind === "sem") return p.violet;
   if (n.classes.includes("blocked_lock")) return p.warn;
   if (n.classes.includes("blocked_join") || n.classes.includes("barrier")) return p.info;
-  if (n.classes.includes("waiting_cond")) return p.violet;
+  if (n.classes.includes("waiting_cond") || n.classes.includes("waiting_sem")) return p.violet;
   if (n.classes.includes("exited")) return p.fg3;
   return p.cyan;
 }
@@ -165,6 +165,11 @@ function NodeMesh({
           <icosahedronGeometry args={[0.42, 2]} />
           <meshStandardMaterial ref={mat} color={color} emissive={color} emissiveIntensity={0.6} roughness={0.35} metalness={0.4} />
         </mesh>
+      ) : node.kind === "sem" ? (
+        <mesh {...handlers}>
+          <octahedronGeometry args={[0.5, 0]} />
+          <meshStandardMaterial ref={mat} color={color} emissive={color} emissiveIntensity={0.45} roughness={0.4} metalness={0.5} wireframe />
+        </mesh>
       ) : (
         <RoundedBox args={[0.95, 0.55, 0.55]} radius={0.12} smoothness={3} {...handlers}>
           <meshStandardMaterial ref={mat} color={color} emissive={color} emissiveIntensity={0.5} roughness={0.3} metalness={0.6} />
@@ -183,7 +188,7 @@ function NodeMesh({
         >
           {node.label}
           <span className="ml-1 text-[9px]" style={{ color: "var(--fg-3)" }}>
-            {node.kind === "thread" ? `T${node.ref}` : `L${node.ref}`}
+            {node.kind === "thread" ? `T${node.ref}` : node.kind === "sem" ? "sem" : `L${node.ref}`}
           </span>
         </div>
       </Html>

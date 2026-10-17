@@ -9,9 +9,10 @@ const LABEL_W = 170;
 
 const SEG_LABEL: Record<string, string> = {
   running: "running",
-  holding: "running inside a critical section",
-  blocked_lock: "blocked waiting for a lock",
+  holding: "running inside a critical section (holding a mutex or rwlock)",
+  blocked_lock: "blocked waiting for a lock (mutex or rwlock)",
   waiting_cond: "waiting on a condition variable",
+  waiting_sem: "waiting on a semaphore",
   blocked_join: "blocked in pthread_join",
   barrier: "waiting at a barrier",
 };

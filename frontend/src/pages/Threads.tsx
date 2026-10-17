@@ -9,7 +9,7 @@ import { api } from "@/services/api";
 import { sessionStore } from "@/services/session";
 import { useStore } from "@/services/store";
 import type { ThreadView, Timeline } from "@/types/api";
-import { fmtDuration, lockMap, threadMap } from "@/utils/format";
+import { fmtDuration, lockHolders, lockMap, modeWord, threadMap } from "@/utils/format";
 import { ThreadTimeline } from "@/visualization/ThreadTimeline";
 
 export default function Threads() {
@@ -36,6 +36,37 @@ function waitText(t: ThreadView, threads: Map<number, ThreadView>, locks: Return
         ) : (
           <span className="text-fg-3">(free — acquiring)</span>
         )}
+        {w.timed && <span className="chip">timed</span>}
+      </span>
+    );
+  }
+  if (w.kind === "rwlock" && w.lock !== null) {
+    const l = locks.get(w.lock);
+    // a writer waits for every holder; a reader only for the writer
+    const blockers = l ? lockHolders(l).filter((h) => h.thread !== t.index || w.mode === "w") : [];
+    const relevant = w.mode === "w" ? blockers : blockers.filter((h) => h.mode !== "r");
+    return (
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        <LockChip id={w.lock} label={`${l?.label ?? `L${w.lock}`} (${modeWord(w.mode)})`} tone="var(--warn)" />
+        {relevant.length ? (
+          <>
+            <span className="text-fg-3">{relevant.some((h) => h.mode === "r") ? "read by" : "write-held by"}</span>
+            {relevant.map((h) => (
+              <ThreadChip key={h.thread} index={h.thread} label={h.thread === t.index ? `${threads.get(h.thread)?.label ?? "self"} (itself)` : threads.get(h.thread)?.label} />
+            ))}
+          </>
+        ) : (
+          <span className="text-fg-3">(compatible — acquiring)</span>
+        )}
+        {w.timed && <span className="chip">timed</span>}
+      </span>
+    );
+  }
+  if (w.kind === "sem") {
+    return (
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        <span className="mono text-xs text-violet">semaphore {w.sem_label ?? w.sem}</span>
+        <span className="text-fg-3">(no owner)</span>
         {w.timed && <span className="chip">timed</span>}
       </span>
     );
@@ -95,7 +126,7 @@ function ThreadsBody() {
       <PageHeader
         eyebrow="Live threads"
         title="Threads and their synchronization state"
-        description="Observed states come from intercepted pthread calls: a thread is “blocked on lock” between its LOCK_REQUEST and LOCK_ACQUIRED records, “waiting (condvar)” inside pthread_cond_wait, and so on."
+        description="Observed states come from intercepted pthread calls: a thread is “blocked on lock” between its LOCK_REQUEST / RW_REQUEST and the matching acquisition, “waiting (condvar)” inside pthread_cond_wait, “waiting (semaphore)” inside sem_wait, and so on."
         actions={
           <Segmented
             value={filter}
@@ -137,7 +168,13 @@ function ThreadsBody() {
             <dl className="mt-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-2 text-sm">
               <dt className="text-fg-3">Holds</dt>
               <dd className="flex flex-wrap gap-1.5">
-                {t.held.length ? t.held.map((h) => <LockChip key={h.lock} id={h.lock} label={locks.get(h.lock)?.label} />) : <span className="text-fg-3">nothing</span>}
+                {t.held.length ? (
+                  t.held.map((h) => (
+                    <LockChip key={h.lock} id={h.lock} label={`${locks.get(h.lock)?.label ?? `L${h.lock}`}${h.mode !== "x" ? ` (${modeWord(h.mode)})` : ""}`} />
+                  ))
+                ) : (
+                  <span className="text-fg-3">nothing</span>
+                )}
               </dd>
               <dt className="text-fg-3">Waiting for</dt>
               <dd>{waitText(t, threads, locks)}</dd>

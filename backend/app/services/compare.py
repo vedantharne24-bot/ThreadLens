@@ -35,6 +35,7 @@ def _summary(row: dict) -> dict:
         "findings": dict(by_class),
         "confirmed_deadlocks": by_class.get("confirmed_deadlock", 0),
         "potential_deadlocks": by_class.get("potential_deadlock", 0),
+        "stalls": by_class.get("stall", 0),
         "events": row.get("event_count") or 0, "lost_events": row.get("lost_events") or 0,
         "threads": stats.get("threads_total", 0), "locks": stats.get("locks_total", 0),
         "lock_acquisitions": acq, "contended_acquisitions": contended,
@@ -56,6 +57,7 @@ ROWS = [
     ("verdict_label", "Verdict", None),
     ("confirmed_deadlocks", "Confirmed deadlocks", "lower"),
     ("potential_deadlocks", "Potential deadlocks", "lower"),
+    ("stalls", "Stalls (every thread blocked, no cycle)", "lower"),
     ("wait_for_cycles", "Wait-for cycles at end", "lower"),
     ("lock_order_cycles", "Lock-order cycles", "lower"),
     ("events", "Events observed", None),
@@ -101,6 +103,8 @@ def compare_sessions(a_row: dict, b_row: dict) -> dict:
                    "the terminated run stopped early.")
     if a["confirmed_deadlocks"] and not b["confirmed_deadlocks"]:
         obs.append("The deadlock observed in A did not occur in B.")
+    if a["stalls"] and not b["stalls"]:
+        obs.append("The stall observed in A (every thread blocked without a lock cycle) did not occur in B.")
     if not a["completed"] and b["completed"]:
         obs.append("B ran to completion; A had to be terminated.")
     if a["potential_deadlocks"] and not b["potential_deadlocks"]:

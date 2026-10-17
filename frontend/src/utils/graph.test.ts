@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { LockView, Snapshot, ThreadView } from "@/types/api";
+import type { LockView, SemaphoreView, Snapshot, ThreadView, WaitEdge, WaitInfo } from "@/types/api";
 import { diffLines } from "@/utils/code";
-import { fmtDuration } from "@/utils/format";
+import { fmtDuration, lockHolders } from "@/utils/format";
 import { buildGraph } from "@/utils/graph";
 
 function thread(index: number, extra: Partial<ThreadView> = {}): ThreadView {
@@ -14,16 +14,19 @@ function thread(index: number, extra: Partial<ThreadView> = {}): ThreadView {
   };
 }
 
-function lock(id: number, owner: number | null, waiters: number[] = []): LockView {
+function lock(id: number, owner: number | null, waiters: number[] = [], extra: Partial<LockView> = {}): LockView {
   return {
-    id, label: `L${id}`, annotation: null, symbol: null, stable_key: null, addr: "0x1", kind: "normal", owner,
-    count: owner === null ? 0 : 1, owner_since_seq: 0, owner_since_ts: 0, waiters, destroyed: false, first_seq: 0,
+    id, label: `L${id}`, annotation: null, symbol: null, stable_key: null, addr: "0x1", kind: "normal", primitive: "mutex", owner,
+    count: owner === null ? 0 : 1, owner_since_seq: 0, owner_since_ts: 0, readers: [], waiters, destroyed: false, first_seq: 0,
     acquisitions: 1, contended: 0, try_failures: 0, timeouts: 0, wait_ns_total: 0, wait_ns_max: 0, hold_ns_total: 0,
-    hold_ns_max: 0, holds: 0,
+    hold_ns_max: 0, holds: 0, ...extra,
   };
 }
 
-const wait = (l: number) => ({ kind: "lock" as const, since_seq: 5, since_ts: 0, timed: false, lock: l, cond: null, target: null, signaled: null });
+const wait = (l: number | null, extra: Partial<WaitInfo> = {}): WaitInfo => ({
+  kind: "lock", since_seq: 5, since_ts: 0, timed: false, lock: l, cond: null, target: null, signaled: null, mode: null,
+  sem: null, sem_label: null, ...extra,
+});
 
 /** Two threads in a classic deadlock: T1 holds L1 waits L2, T2 holds L2 waits L1. */
 function deadlockSnapshot(): Snapshot {
@@ -31,14 +34,15 @@ function deadlockSnapshot(): Snapshot {
     seq: 10, first_ts: 0, now_ts: 0, ended: false,
     threads: [
       thread(0),
-      thread(1, { state: "blocked_lock", wait: wait(2), held: [{ lock: 1, since_seq: 1, since_ts: 0 }], in_cycle: true }),
-      thread(2, { state: "blocked_lock", wait: wait(1), held: [{ lock: 2, since_seq: 2, since_ts: 0 }], in_cycle: true }),
+      thread(1, { state: "blocked_lock", wait: wait(2), held: [{ lock: 1, since_seq: 1, since_ts: 0, mode: "x" }], in_cycle: true }),
+      thread(2, { state: "blocked_lock", wait: wait(1), held: [{ lock: 2, since_seq: 2, since_ts: 0, mode: "x" }], in_cycle: true }),
     ],
     locks: [lock(1, 1, [2]), lock(2, 2, [1]), lock(3, null)],
+    semaphores: [],
     wait_for: {
       edges: [
-        { from: 1, to: 2, kind: "lock", lock: 2, since_seq: 5, since_ts: 0, timed: false, inferred: false },
-        { from: 2, to: 1, kind: "lock", lock: 1, since_seq: 6, since_ts: 0, timed: false, inferred: false },
+        { from: 1, to: 2, kind: "lock", lock: 2, since_seq: 5, since_ts: 0, timed: false, inferred: false, mode: null },
+        { from: 2, to: 1, kind: "lock", lock: 1, since_seq: 6, since_ts: 0, timed: false, inferred: false, mode: null },
       ],
       cycles: [[1, 2]],
     },
@@ -78,13 +82,68 @@ describe("buildGraph", () => {
     const s = deadlockSnapshot();
     s.lock_order = {
       edges: [
-        { from: 1, to: 2, count: 1, threads: [1], first_thread: 1, first_seq_src: 1, first_seq: 2, first_ts: 0, last_seq: 2, guards: [], timed_only: false, via_cond: false },
-        { from: 2, to: 1, count: 1, threads: [2], first_thread: 2, first_seq_src: 3, first_seq: 4, first_ts: 0, last_seq: 4, guards: [], timed_only: false, via_cond: false },
+        { from: 1, to: 2, count: 1, threads: [1], first_thread: 1, first_seq_src: 1, first_seq: 2, first_ts: 0, last_seq: 2, guards: [], timed_only: false, via_cond: false, src_modes: ["x"], dst_modes: ["x"] },
+        { from: 2, to: 1, count: 1, threads: [2], first_thread: 2, first_seq_src: 3, first_seq: 4, first_ts: 0, last_seq: 4, guards: [], timed_only: false, via_cond: false, src_modes: ["x"], dst_modes: ["x"] },
       ],
       cycles: [[1, 2]],
     };
     const g = buildGraph(s, "lockorder");
     expect(g.edges.every((e) => e.classes.includes("potential") && !e.classes.includes("cycle"))).toBe(true);
+  });
+
+  it("draws every reader of an rwlock and labels the writer's wait", () => {
+    // T1 reads L1 and waits to write L2; T3 reads L2 and waits to write L1, which T2 also reads
+    const reader = (t: number) => ({ thread: t, count: 1, since_seq: t, since_ts: 0 });
+    const rw = (from: number, to: number, l: number): WaitEdge => ({
+      from, to, kind: "rwlock", lock: l, since_seq: 9, since_ts: 0, timed: false, inferred: false, mode: "w",
+    });
+    const s = deadlockSnapshot();
+    s.threads = [
+      thread(0),
+      thread(1, { state: "blocked_lock", wait: wait(2, { kind: "rwlock", mode: "w" }), held: [{ lock: 1, since_seq: 1, since_ts: 0, mode: "r" }], in_cycle: true }),
+      thread(2, { held: [{ lock: 1, since_seq: 2, since_ts: 0, mode: "r" }] }),
+      thread(3, { state: "blocked_lock", wait: wait(1, { kind: "rwlock", mode: "w" }), held: [{ lock: 2, since_seq: 3, since_ts: 0, mode: "r" }], in_cycle: true }),
+    ];
+    s.locks = [
+      lock(1, null, [3], { primitive: "rwlock", kind: "rwlock", readers: [reader(1), reader(2)] }),
+      lock(2, null, [1], { primitive: "rwlock", kind: "rwlock", readers: [reader(3)] }),
+    ];
+    s.wait_for = { edges: [rw(1, 3, 2), rw(3, 1, 1), rw(3, 2, 1)], cycles: [[1, 3]] };
+
+    expect(lockHolders(s.locks[0]).map((h) => `${h.thread}:${h.mode}`)).toEqual(["1:r", "2:r"]);
+    const g = buildGraph(s, "resource");
+    const holds = g.edges.filter((e) => e.kind === "holds");
+    expect(holds.map((e) => `${e.source}>${e.target}`).sort()).toEqual(["l:1>t:1", "l:1>t:2", "l:2>t:3"]);
+    expect(holds.every((e) => e.classes.includes("shared") && e.label === "read by")).toBe(true);
+    // only the reader that is itself on the cycle is highlighted
+    expect(holds.find((e) => e.target === "t:1")?.classes).toContain("cycle");
+    expect(holds.find((e) => e.target === "t:2")?.classes).not.toContain("cycle");
+    expect(g.edges.find((e) => e.id === "r:3:1")?.label).toBe("waits to write");
+    expect(g.nodes.find((n) => n.id === "l:1")?.classes).toEqual(expect.arrayContaining(["rwlock", "held", "cycle"]));
+
+    const w = buildGraph(s, "waitfor");
+    expect(w.edges.map((e) => `${e.source}>${e.target}`).sort()).toEqual(["t:1>t:3", "t:3>t:1", "t:3>t:2"]);
+    const toReader = w.edges.find((e) => e.id === "w:3:2:rwlock");
+    expect(toReader?.label).toBe("L1 (write)");
+    expect(toReader?.classes).not.toContain("cycle");
+  });
+
+  it("shows semaphores with their waiters but no holder", () => {
+    const sem: SemaphoreView = {
+      addr: "0x70", label: "slots", annotation: "slots", symbol: null, value: 0, init_value: 4, pshared: false, posts: 0,
+      waits: 4, posts_without_waiters: 0, try_failures: 0, timeouts: 0, interrupted: 0, waiters: [1], destroyed: false,
+      first_seq: 0, wait_ns_total: 0, wait_ns_max: 0,
+    };
+    const s = deadlockSnapshot();
+    s.threads = [thread(0), thread(1, { state: "waiting_sem", wait: wait(null, { kind: "sem", sem: "0x70", sem_label: "slots" }) })];
+    s.locks = [];
+    s.semaphores = [sem];
+    s.wait_for = { edges: [], cycles: [] };
+    const g = buildGraph(s, "resource");
+    expect(g.nodes.find((n) => n.id === "s:0")).toMatchObject({ kind: "sem", label: "slots", sub: "semaphore · count 0" });
+    expect(g.edges.map((e) => `${e.kind}:${e.source}>${e.target}`)).toEqual(["waits:t:1>s:0"]);
+    expect(buildGraph(s, "waitfor").edges).toEqual([]); // no owner: no wait-for edge
+    expect(buildGraph({ ...s, semaphores: [{ ...sem, waiters: [] }] }, "resource").nodes.some((n) => n.kind === "sem")).toBe(false);
   });
 
   it("returns an empty model without a snapshot", () => {

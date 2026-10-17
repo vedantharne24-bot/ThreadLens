@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { ArrowRight, Box, Info, Square } from "lucide-react";
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { type ReactNode, Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { SessionGate } from "@/components/SessionGate";
@@ -10,11 +10,12 @@ import { api } from "@/services/api";
 import { sessionStore } from "@/services/session";
 import { useStore } from "@/services/store";
 import type { EventView, Snapshot } from "@/types/api";
-import { fmtDuration, lockMap, threadMap, typeColor } from "@/utils/format";
+import { TYPE_GROUPS, fmtDuration, lockMap, modeWord, threadMap, typeColor } from "@/utils/format";
 import { type GraphMode, MODE_INFO, buildGraph } from "@/utils/graph";
 import { Graph2D, GraphLegend } from "@/visualization/Graph2D";
 
 const Graph3D = lazy(() => import("@/visualization/Graph3D"));
+const SEM_TYPES = TYPE_GROUPS.Semaphores.join(",");
 
 export default function GraphPage() {
   return (
@@ -127,13 +128,16 @@ function NodePanel({ sid, snap, selected }: { sid: string; snap: Snapshot; selec
   const [events, setEvents] = useState<EventView[] | null>(null);
   const threads = threadMap(snap);
   const locks = lockMap(snap);
-  const kind = selected?.startsWith("t:") ? "thread" : selected?.startsWith("l:") ? "lock" : null;
+  const kind = selected?.startsWith("t:") ? "thread" : selected?.startsWith("l:") ? "lock" : selected?.startsWith("s:") ? "sem" : null;
   const ref = selected ? Number(selected.slice(2)) : null;
+  const sem = kind === "sem" && ref !== null ? (snap.semaphores ?? [])[ref] : undefined;
+  const eventQuery: Record<string, string> =
+    kind === "thread" ? { threads: String(ref) } : kind === "sem" ? { types: SEM_TYPES, q: sem?.label ?? "" } : { locks: String(ref) };
 
   useEffect(() => {
     if (!selected || ref === null) return setEvents(null);
     setEvents(null);
-    const q = kind === "thread" ? { threads: String(ref) } : { locks: String(ref) };
+    const q = eventQuery;
     api
       .events(sid, { ...q, order: "desc", limit: 25 })
       .then((p) => setEvents(p.events))
@@ -142,7 +146,13 @@ function NodePanel({ sid, snap, selected }: { sid: string; snap: Snapshot; selec
   }, [sid, selected, kind, ref, Math.floor(snap.seq / 25)]);
 
   const related = snap.findings.filter((f) =>
-    kind === "thread" ? f.threads.includes(ref!) : kind === "lock" ? f.locks.includes(ref!) : false,
+    kind === "thread"
+      ? f.threads.includes(ref!)
+      : kind === "lock"
+        ? f.locks.includes(ref!)
+        : kind === "sem" && sem
+          ? ((f.metrics.semaphores as string[] | undefined) ?? []).includes(sem.label)
+          : false,
   );
 
   return (
@@ -167,8 +177,26 @@ function NodePanel({ sid, snap, selected }: { sid: string; snap: Snapshot; selec
                   <KV
                     items={[
                       ["TID", <span className="mono">{t.tid}</span>],
-                      ["Holds", t.held.length ? <span className="flex flex-wrap gap-1">{t.held.map((h) => <LockChip key={h.lock} id={h.lock} label={locks.get(h.lock)?.label} />)}</span> : "nothing"],
-                      ["Waiting", t.wait ? `${t.wait.kind}${t.wait.lock !== null ? ` on ${locks.get(t.wait.lock)?.label}` : ""} since #${t.wait.since_seq}` : "no"],
+                      [
+                        "Holds",
+                        t.held.length ? (
+                          <span className="flex flex-wrap gap-1">
+                            {t.held.map((h) => (
+                              <LockChip key={h.lock} id={h.lock} label={`${locks.get(h.lock)?.label ?? `L${h.lock}`}${h.mode !== "x" ? ` (${modeWord(h.mode)})` : ""}`} />
+                            ))}
+                          </span>
+                        ) : (
+                          "nothing"
+                        ),
+                      ],
+                      [
+                        "Waiting",
+                        t.wait
+                          ? `${t.wait.kind === "sem" ? `semaphore ${t.wait.sem_label ?? t.wait.sem}` : t.wait.kind}${
+                              t.wait.lock !== null ? ` on ${locks.get(t.wait.lock)?.label}` : ""
+                            }${t.wait.mode ? ` to ${modeWord(t.wait.mode)}` : ""} since #${t.wait.since_seq}`
+                          : "no",
+                      ],
                       ["Total wait", fmtDuration(t.wait_ns_total)],
                     ]}
                   />
@@ -178,6 +206,7 @@ function NodePanel({ sid, snap, selected }: { sid: string; snap: Snapshot; selec
             {kind === "lock" && locks.get(ref!) && (() => {
               const l = locks.get(ref!)!;
               const owner = l.owner !== null ? threads.get(l.owner) : null;
+              const readers = l.readers ?? [];
               return (
                 <div className="space-y-3">
                   <LockChip id={l.id} label={l.label} />
@@ -186,7 +215,23 @@ function NodePanel({ sid, snap, selected }: { sid: string; snap: Snapshot; selec
                       ["Type", l.kind],
                       ["Address", <span className="mono text-xs">{l.addr}</span>],
                       ["Symbol", l.symbol ?? "—"],
-                      ["Owner", owner ? <ThreadChip index={owner.index} label={owner.label} /> : "free"],
+                      [l.primitive === "rwlock" ? "Writer" : "Owner", owner ? <ThreadChip index={owner.index} label={owner.label} /> : l.primitive === "rwlock" ? "none" : "free"],
+                      ...(l.primitive === "rwlock"
+                        ? ([
+                            [
+                              "Readers",
+                              readers.length ? (
+                                <span className="flex flex-wrap gap-1">
+                                  {readers.map((r) => (
+                                    <ThreadChip key={r.thread} index={r.thread} label={`${threads.get(r.thread)?.label ?? `T${r.thread}`}${r.count > 1 ? ` ×${r.count}` : ""}`} />
+                                  ))}
+                                </span>
+                              ) : (
+                                "none"
+                              ),
+                            ],
+                          ] as [string, ReactNode][])
+                        : []),
                       ["Waiters", l.waiters.length ? <span className="flex flex-wrap gap-1">{l.waiters.map((w) => <ThreadChip key={w} index={w} label={threads.get(w)?.label} />)}</span> : "none"],
                       ["Acquisitions", `${l.acquisitions} (${l.contended} contended)`],
                       ["Wait time", `${fmtDuration(l.wait_ns_total)} total · max ${fmtDuration(l.wait_ns_max)}`],
@@ -196,6 +241,21 @@ function NodePanel({ sid, snap, selected }: { sid: string; snap: Snapshot; selec
                 </div>
               );
             })()}
+            {kind === "sem" && sem && (
+              <div className="space-y-3">
+                <span className="mono text-sm text-violet">{sem.label}</span>
+                <KV
+                  items={[
+                    ["Type", sem.pshared ? "POSIX semaphore (process-shared)" : "POSIX semaphore"],
+                    ["Address", <span className="mono text-xs">{sem.addr}</span>],
+                    ["Count", sem.value === null ? "unknown (initial value not observed)" : `${sem.value} = ${sem.init_value} initial + ${sem.posts} posts − ${sem.waits} waits`],
+                    ["Waiters", sem.waiters.length ? <span className="flex flex-wrap gap-1">{sem.waiters.map((w) => <ThreadChip key={w} index={w} label={threads.get(w)?.label} />)}</span> : "none"],
+                    ["Posts with no waiter", String(sem.posts_without_waiters)],
+                    ["Owner", "none — any thread may post, so a semaphore wait adds no wait-for edge"],
+                  ]}
+                />
+              </div>
+            )}
             {related.length > 0 && (
               <div className="mt-4 space-y-2">
                 <div className="eyebrow">Findings</div>
@@ -224,7 +284,7 @@ function NodePanel({ sid, snap, selected }: { sid: string; snap: Snapshot; selec
                   ))}
                 </ol>
               )}
-              <button className="mt-3 inline-flex items-center gap-1 text-xs text-cyan hover:underline" onClick={() => navigate(`/app/events?${kind === "thread" ? "threads" : "locks"}=${ref}`)}>
+              <button className="mt-3 inline-flex items-center gap-1 text-xs text-cyan hover:underline" onClick={() => navigate(`/app/events?${new URLSearchParams(eventQuery).toString()}`)}>
                 Open in Event Explorer <ArrowRight size={12} />
               </button>
             </div>

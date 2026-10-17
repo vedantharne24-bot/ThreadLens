@@ -345,7 +345,7 @@ function CompareTab() {
               const side = cmp[k];
               return (
                 <motion.div key={k + side.id} initial={{ opacity: 0, x: i ? 16 : -16 }} animate={{ opacity: 1, x: 0 }} transition={{ type: "spring", stiffness: 260, damping: 30 }}>
-                  <Card className="overflow-hidden" glow={side.confirmed_deadlocks ? "crit" : undefined}>
+                  <Card className="overflow-hidden" glow={side.confirmed_deadlocks || side.stalls ? "crit" : undefined}>
                     <CardHeader eyebrow={k === "a" ? "A · original" : "B · corrected"} title={side.label ?? side.id} actions={<VerdictPill verdict={side.verdict} />} />
                     <Graph2D model={compareModel(side)} mode="resource" height={260} compact />
                     <div className="flex flex-wrap gap-2 border-t hairline px-4 py-2.5 text-xs text-fg-2">
@@ -424,8 +424,9 @@ function CrossRunTab() {
   }, [picked]);
   const model: GraphModel = useMemo(() => {
     if (!merged) return { nodes: [], edges: [], cycleCount: 0 };
-    const inCycle = new Set(merged.cycles.flatMap((c) => c.nodes));
-    const cycleEdges = new Set(merged.cycles.flatMap((c) => c.nodes.map((n, i) => `${n}>${c.nodes[(i + 1) % c.nodes.length]}`)));
+    const live = merged.cycles.filter((c) => !c.filter_reason);
+    const inCycle = new Set(live.flatMap((c) => c.nodes));
+    const cycleEdges = new Set(live.flatMap((c) => c.nodes.map((n, i) => `${n}>${c.nodes[(i + 1) % c.nodes.length]}`)));
     return {
       nodes: merged.nodes.map((n, i) => ({ id: `l:${i}:${n.key}`, kind: "lock" as const, ref: i, label: n.label ?? n.key, sub: n.key, classes: ["lock", ...(inCycle.has(n.key) ? ["potential"] : [])] })),
       edges: merged.edges.map((e) => {
@@ -440,7 +441,7 @@ function CrossRunTab() {
           classes: ["order", ...(cycleEdges.has(`${e.from}>${e.to}`) ? ["potential"] : [])],
         };
       }),
-      cycleCount: merged.cycles.length,
+      cycleCount: live.length,
     };
   }, [merged]);
   if (!list) return <Skeleton className="h-64" />;
@@ -483,13 +484,15 @@ function CrossRunTab() {
           <Graph2D model={model} mode="lockorder" height={420} />
         </Card>
         {merged?.cycles.map((c, i) => (
-          <Card key={i} className="p-4">
+          <Card key={i} className={c.filter_reason ? "p-4 opacity-70" : "p-4"}>
             <div className="flex flex-wrap items-center gap-2">
               <VerdictPill verdict="potential_deadlock" />
+              {c.filter_reason && <span className="chip text-fg-3">filtered</span>}
               {c.cross_session && <span className="chip text-warn">only visible by merging runs</span>}
             </div>
-            <div className="mono mt-2 text-sm text-warn">{[...c.nodes, c.nodes[0]].join("  →  ")}</div>
+            <div className={cx("mono mt-2 text-sm", c.filter_reason ? "text-fg-3" : "text-warn")}>{[...c.nodes, c.nodes[0]].join("  →  ")}</div>
             <p className="mt-2 text-sm text-fg-2">{c.explanation}</p>
+            {c.filter_reason && <p className="mt-1 text-xs text-fg-3">Filtered: {c.filter_reason}.</p>}
             <div className="mono mt-2 text-[11px] text-fg-3">sessions: {c.sessions.join(", ")}</div>
           </Card>
         ))}

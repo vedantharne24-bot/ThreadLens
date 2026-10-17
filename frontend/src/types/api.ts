@@ -1,7 +1,9 @@
 // Types mirroring the backend JSON (app/detection/engine.py snapshot(),
 // app/services/eventview.py, app/services/session.py info()).
 
-export type ThreadState = "running" | "blocked_lock" | "waiting_cond" | "blocked_join" | "barrier" | "exited";
+export type ThreadState = "running" | "blocked_lock" | "waiting_cond" | "waiting_sem" | "blocked_join" | "barrier" | "exited";
+/** "x" = mutex (exclusive), "r" / "w" = rwlock held or requested for reading / writing. */
+export type LockMode = "x" | "r" | "w";
 export type Severity = "critical" | "warning" | "info";
 export type Classification =
   | "confirmed_deadlock"
@@ -14,7 +16,7 @@ export type Classification =
 export type SessionStatus = "starting" | "running" | "completed" | "failed" | "killed" | "error" | "analyzing";
 
 export interface WaitInfo {
-  kind: "lock" | "join" | "cond" | "barrier";
+  kind: "lock" | "rwlock" | "join" | "cond" | "sem" | "barrier";
   since_seq: number;
   since_ts: number;
   timed: boolean;
@@ -22,6 +24,11 @@ export interface WaitInfo {
   cond: string | null;
   target: number | null;
   signaled: string | null;
+  /** rwlock waits: requested mode */
+  mode: "r" | "w" | null;
+  /** semaphore waits: address and label */
+  sem: string | null;
+  sem_label: string | null;
 }
 
 export interface ThreadView {
@@ -33,7 +40,7 @@ export interface ThreadView {
   state: ThreadState;
   parent: number | null;
   wait: WaitInfo | null;
-  held: { lock: number; since_seq: number; since_ts: number }[];
+  held: { lock: number; since_seq: number; since_ts: number; mode: LockMode }[];
   started_seq: number;
   started_ts: number;
   ended_seq: number | null;
@@ -59,10 +66,14 @@ export interface LockView {
   stable_key: string | null;
   addr: string;
   kind: string;
+  primitive: "mutex" | "rwlock";
+  /** mutex owner, or the writer of an rwlock */
   owner: number | null;
   count: number;
   owner_since_seq: number;
   owner_since_ts: number;
+  /** rwlocks: threads holding a read lock (count > 1 for recursive read locks) */
+  readers: { thread: number; count: number; since_seq: number; since_ts: number }[];
   waiters: number[];
   destroyed: boolean;
   first_seq: number;
@@ -80,12 +91,14 @@ export interface LockView {
 export interface WaitEdge {
   from: number;
   to: number;
-  kind: "lock" | "join" | "cond_reacquire";
+  kind: "lock" | "rwlock" | "join" | "cond_reacquire";
   lock: number | null;
   since_seq: number;
   since_ts: number;
   timed: boolean;
   inferred: boolean;
+  /** rwlock edges: mode requested by `from` (a writer has one edge per reader) */
+  mode: "r" | "w" | null;
 }
 
 export interface LockOrderEdge {
@@ -101,6 +114,30 @@ export interface LockOrderEdge {
   guards: number[];
   timed_only: boolean;
   via_cond: boolean;
+  src_modes: LockMode[];
+  dst_modes: LockMode[];
+}
+
+export interface SemaphoreView {
+  addr: string;
+  label: string;
+  annotation: string | null;
+  symbol: string | null;
+  /** initial value + posts - successful waits; null when the initial value is unknown */
+  value: number | null;
+  init_value: number | null;
+  pshared: boolean;
+  posts: number;
+  waits: number;
+  posts_without_waiters: number;
+  try_failures: number;
+  timeouts: number;
+  interrupted: number;
+  waiters: number[];
+  destroyed: boolean;
+  first_seq: number;
+  wait_ns_total: number;
+  wait_ns_max: number;
 }
 
 export interface Evidence {
@@ -181,6 +218,7 @@ export interface Snapshot {
   ended: boolean;
   threads: ThreadView[];
   locks: LockView[];
+  semaphores: SemaphoreView[];
   wait_for: { edges: WaitEdge[]; cycles: number[][] };
   lock_order: { edges: LockOrderEdge[]; cycles: number[][] };
   findings: Finding[];
@@ -195,6 +233,8 @@ export interface Snapshot {
     threads_waiting: number;
     locks_total: number;
     locks_held: number;
+    rwlocks_total: number;
+    semaphores_total: number;
     events: number;
     lock_acquisitions: number;
     contended_acquisitions: number;
@@ -328,6 +368,7 @@ export interface CompareSide {
   verdict_label: string;
   confirmed_deadlocks: number;
   potential_deadlocks: number;
+  stalls: number;
   events: number;
   snapshot: Pick<Snapshot, "threads" | "locks" | "wait_for" | "lock_order">;
   findings_list: Pick<Finding, "id" | "title" | "classification" | "severity" | "status" | "cycle">[];
@@ -345,7 +386,7 @@ export interface Comparison {
 export interface MergedLockOrder {
   nodes: { key: string; label: string; stable: boolean; sessions: string[] }[];
   edges: { from: string; to: string; count: number; sessions: string[] }[];
-  cycles: { nodes: string[]; sessions: string[]; cross_session: boolean; explanation: string }[];
+  cycles: { nodes: string[]; sessions: string[]; cross_session: boolean; explanation: string; filter_reason: string | null }[];
   sessions: string[];
 }
 

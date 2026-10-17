@@ -32,8 +32,8 @@ function EventsBody() {
   const [types, setTypes] = useState<Set<string>>(() => new Set(params.get("types")?.split(",").filter(Boolean) ?? []));
   const [thread, setThread] = useState(params.get("threads") ?? "");
   const [lock, setLock] = useState(params.get("locks") ?? "");
-  const [q, setQ] = useState("");
-  const [qDebounced, setQDebounced] = useState("");
+  const [q, setQ] = useState(params.get("q") ?? "");
+  const [qDebounced, setQDebounced] = useState(params.get("q") ?? "");
   const [fromMs, setFromMs] = useState("");
   const [toMs, setToMs] = useState("");
   const [follow, setFollow] = useState(true);

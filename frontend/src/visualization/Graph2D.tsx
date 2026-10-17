@@ -66,12 +66,18 @@ function buildStyle(): cytoscape.StylesheetJson {
     { selector: "node.thread.blocked_lock", style: { "border-color": c.warn, "background-color": mixHex(c.warn, c.surface, 0.14) } },
     { selector: "node.thread.blocked_join", style: { "border-color": c.info } },
     { selector: "node.thread.waiting_cond", style: { "border-color": c.violet, "border-style": "dashed" } },
+    { selector: "node.thread.waiting_sem", style: { "border-color": c.violet, "border-style": "dashed" } },
     { selector: "node.thread.exited", style: { opacity: 0.45, "border-style": "dotted" } },
     {
       selector: "node.lock",
       style: { shape: "round-rectangle", width: 46, height: 24, "border-color": c.violet, "background-color": mixHex(c.violet, c.surface, 0.12) },
     },
     { selector: "node.lock.held", style: { "background-color": mixHex(c.violet, c.surface, 0.28) } },
+    { selector: "node.lock.rwlock", style: { shape: "cut-rectangle", width: 52 } },
+    {
+      selector: "node.sem",
+      style: { shape: "diamond", width: 34, height: 34, "border-color": c.violet, "border-style": "dashed", "background-color": mixHex(c.violet, c.surface, 0.08) },
+    },
     {
       selector: "node.cycle",
       style: { "border-color": c.crit, "border-width": 3, "underlay-color": c.crit, "underlay-opacity": 0.22, "underlay-padding": 7, "underlay-shape": "ellipse" },
@@ -99,11 +105,14 @@ function buildStyle(): cytoscape.StylesheetJson {
       },
     },
     { selector: "edge.holds", style: { "line-color": c.violet, "target-arrow-color": c.violet } },
+    { selector: "edge.holds.shared", style: { "line-style": "dashed", "line-dash-pattern": [3, 3], width: 1.5 } },
     { selector: "edge.waits", style: { "line-style": "dashed", "line-dash-pattern": [6, 4], "line-color": c.warn, "target-arrow-color": c.warn } },
     { selector: "edge.join", style: { "line-style": "dotted", "line-color": c.info, "target-arrow-color": c.info } },
     { selector: "edge.reacquire", style: { "line-style": "dashed", "line-dash-pattern": [2, 4], "line-color": c.violet, "target-arrow-color": c.violet } },
     { selector: "edge.order", style: { "line-color": c.fg3, "target-arrow-color": c.fg3, width: 1.6 } },
     { selector: "edge.timed", style: { opacity: 0.75 } },
+    { selector: "edge.inferred", style: { "line-dash-pattern": [2, 5] } },
+    { selector: "edge.waits.sem", style: { "line-color": c.violet, "target-arrow-color": c.violet } },
     { selector: "edge.cycle", style: { "line-color": c.crit, "target-arrow-color": c.crit, width: 3, color: c.crit, "z-index": 10 } },
     { selector: "edge.potential", style: { "line-color": c.warn, "target-arrow-color": c.warn, width: 2.6, "z-index": 9 } },
     { selector: "node:selected", style: { "overlay-color": c.cyan, "overlay-opacity": 0.14, "overlay-padding": 6, "border-color": c.cyan } },
@@ -319,6 +328,9 @@ export function GraphLegend({ mode }: { mode: GraphMode }) {
       {mode !== "lockorder" && item(<span className="h-3 w-3 rounded-full border-2" style={{ borderColor: "var(--cyan)" }} />, "thread")}
       {mode !== "waitfor" && item(<span className="h-2.5 w-4 rounded-[3px] border-2" style={{ borderColor: "var(--violet)" }} />, "lock")}
       {mode === "resource" && item(line("var(--violet)"), "held by")}
+      {mode === "resource" && item(line("var(--violet)", "3 3"), "read-held by (rwlock)")}
+      {mode === "resource" &&
+        item(<span className="h-2.5 w-2.5 rotate-45 border-2 border-dashed" style={{ borderColor: "var(--violet)" }} />, "semaphore (no owner)")}
       {mode !== "lockorder" && item(line("var(--warn)", "5 3"), "waits for")}
       {mode !== "lockorder" && item(line("var(--info)", "1 3"), "joins")}
       {mode !== "lockorder" && item(line("var(--violet)", "2 3"), "re-acquire (inferred)")}

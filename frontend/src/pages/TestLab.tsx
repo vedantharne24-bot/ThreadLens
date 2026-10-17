@@ -34,6 +34,9 @@ async function waitDone(id: string, timeoutMs: number): Promise<SessionInfo> {
   }
 }
 
+/** Categories whose scenario has a corrected twin worth running side by side. */
+const PAIR_RUN_CATEGORIES = new Set(["deadlock", "potential", "stall"]);
+
 export default function TestLab() {
   const navigate = useNavigate();
   const prefs = usePrefs((p) => ({ ring: p.ringCapacity, block: p.blockUs, kill: p.killOnDeadlock }));
@@ -155,7 +158,7 @@ export default function TestLab() {
                     <button className="btn" onClick={() => setSourceFor(s)}>
                       <Code2 size={14} /> Source{s.pair ? " & fix" : ""}
                     </button>
-                    {s.pair && (s.category === "deadlock" || s.category === "potential") && byId.get(s.pair) && s.id !== "lock-order-ba" && (
+                    {s.pair && PAIR_RUN_CATEGORIES.has(s.category) && byId.get(s.pair) && s.id !== "lock-order-ba" && (
                       <button className="btn" disabled={busy !== null || pairRun !== null || !s.built} onClick={() => void runPair(s)} title={`Run ${s.title}, then ${byId.get(s.pair)?.title}, then compare`}>
                         <GitCompare size={14} /> Run original + fix
                       </button>
