@@ -47,7 +47,7 @@ export default function Landing() {
   const show3D = webgl && !reduced;
 
   return (
-    <div className="min-h-full overflow-x-hidden bg-bg text-fg">
+    <div className="min-h-full overflow-x-clip bg-bg text-fg">
       <header className="fixed inset-x-0 top-0 z-30 border-b border-transparent backdrop-blur-md [background:linear-gradient(to_bottom,color-mix(in_oklab,var(--bg)_85%,transparent),transparent)]">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-6">
           <Link to="/" className="flex items-center gap-2.5">
@@ -389,7 +389,7 @@ function ComparePanel({ kind }: { kind: "original" | "fixed" }) {
             </g>
           ))}
         </svg>
-        <pre className="mono overflow-x-auto rounded-lg border hairline bg-bg-elev p-3 text-[11.5px] leading-relaxed text-fg-2">
+        <pre className="mono whitespace-pre-wrap break-words rounded-lg border hairline bg-bg-elev p-3 text-[11.5px] leading-relaxed text-fg-2">
           {orig ? (
             <>
               <span className="text-fg-3">{"// teller-1: A→B   teller-2: B→A"}</span>

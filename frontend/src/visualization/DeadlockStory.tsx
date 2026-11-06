@@ -6,8 +6,8 @@ import { cx } from "@/components/ui";
 export const STEPS = [
   { title: "Thread A acquires Lock 1", text: "teller-1 enters transfer() and locks the source account.", log: "#15 LOCK_ACQUIRED  teller-1  account[A]" },
   { title: "Thread B acquires Lock 2", text: "teller-2 does the same for the opposite transfer.", log: "#22 LOCK_ACQUIRED  teller-2  account[B]" },
-  { title: "Thread A requests Lock 2", text: "Lock 2 is held by B, so A blocks. The collector records LOCK_REQUEST — and no LOCK_ACQUIRED follows.", log: "#27 LOCK_REQUEST   teller-1  account[B]" },
-  { title: "Thread B requests Lock 1", text: "Lock 1 is held by A, so B blocks too.", log: "#30 LOCK_REQUEST   teller-2  account[A]" },
+  { title: "Thread A requests Lock 2", text: "Lock 2 is held by B, so A blocks. The collector records LOCK_REQUEST — and no LOCK_ACQUIRED follows.", log: "LOCK_REQUEST   teller-1  account[B]  (blocks)" },
+  { title: "Thread B requests Lock 1", text: "Lock 1 is held by A, so B blocks too.", log: "LOCK_REQUEST   teller-2  account[A]  (blocks)" },
   { title: "The circular dependency appears", text: "A waits for B (via Lock 2) and B waits for A (via Lock 1): a cycle in the wait-for graph. Neither can ever continue.", log: "wait-for: teller-1 → teller-2 → teller-1" },
   { title: "ThreadLens highlights the cycle", text: "Every edge is an observed, untimed wait; ownership comes from recorded acquisitions; no events were lost; a collector heartbeat proves the stream was drained. → confirmed.", log: "HEARTBEAT seq=31 · cycle persists · CONFIRMED" },
   { title: "The diagnosis explains the evidence", text: "Four ordered events with source lines, the cycle, the Coffman conditions, and a suggested fix: acquire both accounts in one global order.", log: "F1 confirmed_deadlock · bank_transfer.c:32,34" },
